@@ -1,0 +1,3 @@
+-r requirements.txt
+oci==2.191.0
+oracledb==26.1.0

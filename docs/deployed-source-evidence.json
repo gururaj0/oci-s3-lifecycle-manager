@@ -1,0 +1,12 @@
+{
+  "mode": "mock",
+  "runtime_matches_release": true,
+  "files": {
+    "service/app.py": "91124fd1d5f901f12745500387df483ef7837fc129c2c89c5905c9d02b48c4c9",
+    "service/s3.py": "e33669285abd75408f979c1a14f3d5656d2b729d3de350aafb5b067b37f96200",
+    "service/static/app.js": "8e433a8d6f9f80597c8d6c2fef92787fa591f7206296ce116881d553b0b7e449",
+    "shared/lifecycle.py": "783be3cc75db27269e145ee211631dc432fc488faeaa541d7604350184a161b5",
+    "scripts/lcm_operator.py": "1e76848d13ac9eff8ea84b6327e303d9f7f8284cb58bdeef40431a3674956fc0",
+    "requirements-runtime.lock": "fcc89ee16378d6dfe3574fc00294f7f4ab8ff0992425be3a67ab654f322078b2"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "mode": "mock",
+  "production_ready": false,
+  "endpoint": "https://exjtqqyg54c5dek5vgprfx3no4.apigateway.us-ashburn-1.oci.customer-oci.com",
+  "started_at": "2026-11-12T13:46:46.219807+00:00",
+  "checks": {
+    "readiness": "PASS",
+    "idempotency": "PASS",
+    "auth_and_owner": "PASS",
+    "raw_sigv4_read_scope": "PASS_MOCK",
+    "pool_capacity": "PASS",
+    "early_revoke_s3_denial": "PASS_MOCK",
+    "raw_sigv4_write_scope": "PASS_MOCK",
+    "five_minute_expiry": "PASS_MOCK",
+    "status_after_expiry": "REVOKED"
+  },
+  "expiry": {
+    "lease_id": "9d82b5b9-99ad-480c-8fd7-cde1dbaee6af",
+    "expires_at": "2026-11-12T13:51:53.747727Z",
+    "ttl_seconds": 300,
+    "mode": "mock",
+    "last_allowed_at": "2026-11-12T13:51:55.454530+00:00",
+    "observed_denial_at": "2026-11-12T13:51:55.820883+00:00",
+    "observed_delay_seconds": 2.0731561183929443,
+    "no_early_revocation": true
+  },
+  "finished_at": "2026-11-12T13:51:56.077458+00:00"
+}

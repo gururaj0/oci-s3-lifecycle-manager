@@ -1,0 +1,15 @@
+.venv/
+.local/
+__pycache__/
+.pytest_cache/
+*.pyc
+*.db
+*.db-*
+*.pem
+*.key
+.env
+*.tfstate*
+*.tfvars
+.terraform/
+release/*.zip
+~$*

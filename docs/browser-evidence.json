@@ -1,0 +1,12 @@
+{
+  "url": "https://exjtqqyg54c5dek5vgprfx3no4.apigateway.us-ashburn-1.oci.customer-oci.com",
+  "mode": "mock",
+  "desktop": true,
+  "mobile_390px_no_overflow": true,
+  "create_lease": true,
+  "secret_masked": true,
+  "signed_s3_read": true,
+  "foreign_bucket_denied": true,
+  "revoked_s3_denied": true,
+  "console_errors": []
+}

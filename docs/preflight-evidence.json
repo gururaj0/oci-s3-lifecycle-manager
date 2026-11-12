@@ -1,0 +1,12 @@
+{
+  "placement_verified": true,
+  "compartment_name": "Demo",
+  "compartment_id": "ocid1.compartment.oc1..aaaaaaaav6gvasmb4eyn6fnuuaoabal6mdfzuu4qxf3ll5kidwj24jxcn3dq",
+  "region": "us-ashburn-1",
+  "home_region": true,
+  "bastion_id": "ocid1.instance.oc1.iad.anuwcljt5kvp65icwggygh4zqsr7gyufhxyk7kqmtfsmc67jkgapto2ak4va",
+  "bastion_public_ip": "152.70.204.167",
+  "bastion_private_ip": "172.16.0.71",
+  "mode": "mock",
+  "production_ready": false
+}

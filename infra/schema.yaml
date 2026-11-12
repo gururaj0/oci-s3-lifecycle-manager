@@ -1,0 +1,43 @@
+title: OCI S3 Credential Lifecycle Manager — mock demo
+description: Private VM and HTTPS API Gateway. Synthetic S3 only; live OCI credential issuance is disabled pending M0 gates. Uses an existing VCN, public gateway subnet, private route table and DemoBastion. Billable resources include one 1-OCPU/8-GB VM, 50-GB boot volume and API Gateway.
+schemaVersion: 1.1.0
+version: '0.1.0'
+locale: en
+variableGroups:
+  - title: Verified placement
+    variables: [tenancy_ocid, compartment_ocid, region, availability_domain, deployment_profile]
+  - title: Existing network and bastion
+    variables: [vcn_id, public_subnet_id, private_route_table_id, private_subnet_cidr, bastion_private_ip, ssh_public_key, gateway_type, client_allowlist]
+  - title: Compute
+    variables: [display_name, shape, image_id]
+variables:
+  tenancy_ocid:
+    type: oci:identity:tenancy:id
+    required: true
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    required: true
+    title: Demo compartment (OCID is verified during apply)
+  region:
+    type: oci:identity:region:name
+    required: true
+  availability_domain:
+    type: string
+    required: true
+  deployment_profile:
+    type: enum
+    enum: [mock]
+    default: mock
+  ssh_public_key:
+    type: oci:core:ssh:publickey
+    required: true
+  gateway_type:
+    type: enum
+    enum: [PUBLIC, PRIVATE]
+    default: PUBLIC
+  client_allowlist:
+    type: list(string)
+    default: [0.0.0.0/0]
+outputGroups:
+  - title: Mock deployment
+    outputs: [api_endpoint, readiness_url, openapi_url, instance_id, private_ip, mode, cleanup_runbook]

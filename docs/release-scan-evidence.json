@@ -1,0 +1,8 @@
+{
+  "artifact": "oci-s3-lcm-0.1.0-mock.zip",
+  "sha256": "64a41c8211d5994c016041a3e01f8bc58c6912847b20e62263e1e588d5f5a608",
+  "embedded_manifest_verified": true,
+  "private_key_scan": "PASS",
+  "path_safety": "PASS",
+  "mode": "mock"
+}

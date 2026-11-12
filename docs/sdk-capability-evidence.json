@@ -1,0 +1,30 @@
+{
+  "sdk_version": "2.191.0",
+  "credential_operations": {
+    "create_customer_secret_key": true,
+    "list_customer_secret_keys": true,
+    "delete_customer_secret_key": true
+  },
+  "scheduler_create_fields": [
+    "compartment_id",
+    "display_name",
+    "description",
+    "action",
+    "recurrence_details",
+    "recurrence_type",
+    "resource_filters",
+    "resources",
+    "time_starts",
+    "time_ends",
+    "local_time_zone",
+    "freeform_tags",
+    "defined_tags"
+  ],
+  "scheduler_resource_fields": [
+    "id",
+    "metadata",
+    "parameters"
+  ],
+  "validated_live": false,
+  "production_ready": false
+}

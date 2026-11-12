@@ -1,0 +1,35 @@
+{
+  "mode": "mock",
+  "production_ready": false,
+  "endpoint": "https://exjtqqyg54c5dek5vgprfx3no4.apigateway.us-ashburn-1.oci.customer-oci.com",
+  "started_at": "2026-11-12T13:35:21.066493+00:00",
+  "checks": {
+    "readiness": "PASS",
+    "idempotency": "PASS",
+    "auth_and_owner": "PASS",
+    "raw_sigv4_read_scope": "PASS_MOCK",
+    "pool_capacity": "PASS",
+    "early_revoke_s3_denial": "PASS_MOCK",
+    "raw_sigv4_write_scope": "PASS_MOCK",
+    "five_minute_expiry": "PASS_MOCK",
+    "status_after_expiry": "REVOKED"
+  },
+  "issuance_latency": {
+    "requests": 100,
+    "p50_seconds": 0.2801411874997939,
+    "p95_seconds": 0.3068729999995412,
+    "max_seconds": 0.3457641249997323,
+    "mode": "mock"
+  },
+  "expiry": {
+    "lease_id": "48db147a-92e5-4435-a21d-988f59f27a98",
+    "expires_at": "2026-11-12T13:41:25.448454Z",
+    "ttl_seconds": 300,
+    "mode": "mock",
+    "last_allowed_at": "2026-11-12T13:41:25.188302+00:00",
+    "observed_denial_at": "2026-11-12T13:41:25.713864+00:00",
+    "observed_delay_seconds": 0.2654099464416504,
+    "no_early_revocation": true
+  },
+  "finished_at": "2026-11-12T13:41:25.976159+00:00"
+}

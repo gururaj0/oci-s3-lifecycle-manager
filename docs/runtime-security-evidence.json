@@ -1,0 +1,18 @@
+{
+  "mode": "mock",
+  "independent_systemd_reconciler": {
+    "result": "success",
+    "exec_main_status": 0
+  },
+  "permissions": {
+    "/var/lib/lcm": "0700",
+    "ledger.db": "0600",
+    "mock-cloud.db": "0600",
+    "mock-vault.key": "0600",
+    "demo-signing.pem": "0600"
+  },
+  "api_access_logging": false,
+  "observed_api_journal": [
+    "Started OCI S3 Lifecycle Manager (explicit mock demo)."
+  ]
+}

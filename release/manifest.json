@@ -1,0 +1,8 @@
+{
+  "version": "0.1.0",
+  "profile": "mock",
+  "production_ready": false,
+  "application_sha256": "3fd936701b566fdba83cc1a568e06604f20380630ada4cbb211f0e149919d45b",
+  "artifact": "embedded-source",
+  "production_gates": "docs/acceptance.md"
+}

@@ -1,0 +1,21 @@
+{
+  "data": {
+    "items": [
+      {
+        "name": "Instance"
+      },
+      {
+        "name": "InstancePool"
+      },
+      {
+        "name": "AutonomousDatabase"
+      },
+      {
+        "name": "FunctionsFunction"
+      },
+      {
+        "name": "DbSystem"
+      }
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "created": "2026-11-12T13:25:28.580000+00:00",
+  "duration": {
+    "execution-plan-job-id": null,
+    "execution-plan-strategy": "AUTO_APPROVED",
+    "operation": "APPLY",
+    "terraform-advanced-options": {
+      "detailed-log-level": null,
+      "is-refresh-required": true,
+      "parallelism": 10
+    }
+  },
+  "finished": "2026-11-12T13:30:06.740000+00:00",
+  "id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65iaxnbpv3kjhsoea43klwi3r23qvgdcrvxacsxba6lxal7a",
+  "state": "SUCCEEDED"
+}

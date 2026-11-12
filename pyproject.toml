@@ -1,0 +1,8 @@
+[project]
+name = "oci-s3-lifecycle-manager"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Managed S3 key leases; explicit mock demo and gated OCI integration"
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests/unit", "tests/contract"]

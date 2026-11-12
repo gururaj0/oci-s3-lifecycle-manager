@@ -1,0 +1,22 @@
+{
+  "states": {
+    "REVOKED": 5
+  },
+  "pools": [
+    {
+      "profile": "sales-read",
+      "capacity": 2,
+      "allocated": 0,
+      "quarantined": 0
+    },
+    {
+      "profile": "sales-write",
+      "capacity": 2,
+      "allocated": 0,
+      "quarantined": 0
+    }
+  ],
+  "overdue": 0,
+  "heartbeat_at": "2026-11-12T13:52:13.636935Z",
+  "healthy": true
+}

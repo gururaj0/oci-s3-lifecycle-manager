@@ -1,0 +1,6 @@
+{
+  "compartment": "ocid1.compartment.oc1..aaaaaaaav6gvasmb4eyn6fnuuaoabal6mdfzuu4qxf3ll5kidwj24jxcn3dq",
+  "id": "ocid1.instance.oc1.iad.anuwcljt5kvp65ica5lbvq6ssdczgp3obudpiaw4hrma6ml7bqci45zicekq",
+  "shape": "VM.Standard.E5.Flex",
+  "state": "RUNNING"
+}
