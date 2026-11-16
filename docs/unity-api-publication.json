@@ -1,0 +1,18 @@
+{
+  "checks": {
+    "published_guide_css_example_match_source": true,
+    "published_openapi_valid_and_matches_export": true,
+    "api_still_requires_authentication": true,
+    "desktop_mobile_guide_layout": true,
+    "swagger_operations_render": true,
+    "no_browser_script_errors": true
+  },
+  "passed": true,
+  "guide": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/unity",
+  "swagger": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/docs",
+  "openapi": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/openapi.json",
+  "python_example": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/static/unity_client.py",
+  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:d4d20756975f49b30112723811407341f47be689200a5217b46032d12c358ceb",
+  "unit_tests_passed": 71,
+  "production_ready": false
+}

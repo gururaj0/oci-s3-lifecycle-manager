@@ -23,7 +23,7 @@ def create_ui_app(e=None):
     schema=app.openapi()
     # Reuse public assets, API reference, security/error handlers and readiness.
     # No lifecycle or mock route is registered on the UI listener.
-    public={'/','/static','/docs','/redoc','/openapi.json','/health/live','/health/ready'}
+    public={'/','/unity','/static','/docs','/redoc','/openapi.json','/health/live','/health/ready'}
     app.router.routes[:]=[r for r in app.router.routes if r.path in public]
     app.openapi=lambda:schema
     connector=ConnectorAuth(e,Auth(e.cfg))

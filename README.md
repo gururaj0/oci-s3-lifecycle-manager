@@ -12,6 +12,8 @@ See [cleanup record](docs/cleanup.md), [acceptance matrix](docs/acceptance.md),
 
 ## Live demo
 
+[Unity implementer guide](https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/unity) · [Interactive API reference](https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/docs) · [OpenAPI JSON](https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/openapi.json)
+
 [Open the live OCI demo](https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/).
 Use **Sign in with OCI** in the live UI with the approved Default-domain operator account.
 The UI simulates the Unity connector: the backend obtains an Identity Domains client-credentials

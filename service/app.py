@@ -301,8 +301,14 @@ def create_app(lcm=None, worker=True):
     static=Path(__file__).parent/'static'
     app.mount('/static',StaticFiles(directory=static),name='static')
 
+    @app.get('/unity',include_in_schema=False)
+    def unity_reference():
+        return FileResponse(static/'unity-api.html')
+
     @app.get('/',include_in_schema=False)
     def index():
         return FileResponse(static/('live.html' if e.cfg.mode=='oci' else 'index.html'))
 
+    from service.api_reference import install_reference
+    install_reference(app, e.cfg)
     return app

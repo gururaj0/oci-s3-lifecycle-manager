@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unity connector · OCI S3 API guide</title><link rel="stylesheet" href="/static/unity-api.css"></head>
+<body><main>
+<nav><a href="/">Live demo</a><a href="/docs">Interactive API reference</a><a href="/openapi.json" download="oci-s3-lifecycle-openapi.json">Download OpenAPI</a><a href="/static/unity_client.py" download>Python example</a></nav>
+<header><p>OCI S3 Credential Lifecycle Manager · API v0.2.0</p><h1>Unity connector integration guide</h1><p>Obtain a short-lived lease, use its credentials with OCI Object Storage’s S3 API, then revoke the lease when the query or job finishes.</p></header>
+<section><h2>1. Onboard your connector</h2><p>Ask the deployment operator for a dedicated Identity Domain confidential OAuth client with <code>client_credentials</code> enabled, the approved API scopes, and a backend identity-to-profile mapping. The demo UI’s connector registration does not automatically authorize a new Unity client. Share the client secret through your secret manager, never through this page or source control.</p><p>This guide is public and contains no credentials. The UI’s interactive OCI sign-in is for the human demo; a server-side Unity connector calls the token endpoint and Lifecycle API directly.</p>
+<dl><dt>Lifecycle API base URL</dt><dd><code>https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com</code></dd><dt>Token endpoint</dt><dd><code>https://idcs-1ee8a5696b814af291e90b1adc2fe166.identity.oraclecloud.com/oauth2/v1/token</code></dd><dt>Audience / scope prefix</dt><dd><code>https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/lifecycle/</code></dd></dl>
+<p>Request the full scope URI ending in <code>sales-read</code> or <code>sales-write</code>. Request only the scopes you need. The service JWT currently lasts up to 600 seconds; use the token response’s <code>expires_in</code> to refresh it.</p>
+<table><caption>Current demo profiles</caption><thead><tr><th>Profile</th><th>Bucket</th><th>Operations</th><th>Concurrent leases</th></tr></thead><tbody><tr><td>sales-read</td><td>lcm-live-v2-sales</td><td>LIST, GET</td><td>2</td></tr><tr><td>sales-write</td><td>lcm-live-v2-sales</td><td>LIST, GET, PUT (create/overwrite)</td><td>2</td></tr></tbody></table><p>Neither profile grants DELETE. These are credential slots, not HTTP connection limits. Discover authorized profiles using <code>GET /v1/config</code>.</p></section>
+<section><h2>2. Obtain a service access token</h2><p>Use HTTP Basic client authentication and form-encoded parameters. Load credentials securely on your backend. Do not use an OCI Console Auth Token, your OCI API signing key, or a user ID token as the bearer token.</p><pre><code>POST /oauth2/v1/token
+Authorization: Basic &lt;base64(client_id:client_secret)&gt;
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials&amp;scope=&lt;URL-encoded-full-scope-URI&gt;</code></pre><p>Keep the returned <code>access_token</code> server-side. API Gateway validates it. The backend then checks the connector’s approved profile mapping and lease ownership.</p></section>
+<section><h2>3. Create a credential lease</h2><pre><code>POST /v1/leases
+Authorization: Bearer &lt;access_token&gt;
+Content-Type: application/json
+Idempotency-Key: 9b35fbb8-954c-46de-b48a-0bcf88637db4
+
+{
+  "scope_profile": "sales-read",
+  "ttl_seconds": 900,
+  "client_request_id": "unity-query-123"
+}</code></pre><p>A new lease returns <code>201</code>. An authorized replay returns <code>200</code>. The following values are illustrative placeholders:</p><pre><code>{
+  "lease_id": "e751b64f-dac0-438e-b4d4-651c857a0f96",
+  "status": "ACTIVE",
+  "access_key_id": "&lt;issued-access-key&gt;",
+  "secret_access_key": "&lt;issued-secret&gt;",
+  "endpoint": "https://&lt;namespace&gt;.compat.objectstorage.us-ashburn-1.oci.customer-oci.com",
+  "region": "us-ashburn-1",
+  "scope_profile": "sales-read",
+  "expires_at": "&lt;UTC ISO-8601 timestamp&gt;",
+  "expiry_mode": "managed_key_deletion"
+}</code></pre><p>TTL is 300–3600 seconds, default 900, measured from IAM key creation. Issuance and credential propagation consume part of that time. The backend reserves a service user, creates its key, confirms the expiration schedule and stores a bounded retry response before delivering credentials.</p></section>
+<section><h2>4. Access the bucket using S3</h2><p>Use the returned endpoint and region with AWS Signature V4 and path-style addressing. There is <strong>no AWS session token</strong>. The service JWT authenticates Lifecycle API calls; it is not sent to Object Storage.</p><pre><code>import boto3
+from botocore.config import Config
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url=lease["endpoint"],
+    region_name=lease["region"],
+    aws_access_key_id=lease["access_key_id"],
+    aws_secret_access_key=lease["secret_access_key"],
+    config=Config(signature_version="s3v4",
+                  s3={"addressing_style": "path"}),
+)
+result = s3.list_objects_v2(Bucket=profile["bucket"], MaxKeys=1)</code></pre><p>Use the bucket from the selected profile returned by <code>/v1/config</code>. New keys may require propagation time before S3 accepts them. Use bounded retries; never extend the recorded deadline or mint repeated leases to hide propagation failures.</p></section>
+<section><h2>5. Revoke and confirm cleanup</h2><pre><code>DELETE /v1/leases/&lt;lease_id&gt;
+Authorization: Bearer &lt;current-access-token&gt;
+
+GET /v1/leases/&lt;lease_id&gt;
+Authorization: Bearer &lt;current-access-token&gt;</code></pre><p>DELETE returns an empty <code>202</code> when revocation is requested, or <code>204</code> if already revoked. Poll GET until <code>status</code> is <code>REVOKED</code>. Refresh the service JWT if necessary; the connector issuer and subject must still match the lease owner and its scope must authorize the profile.</p><p>Early revocation or expiration deletes the owned IAM key, cleans up its schedule and replay secret, updates ADB, and releases the pool slot. The service user, bucket and data remain. Failures stay <code>REVOKE_PENDING</code> for retry. Always attempt early revocation in a <code>finally</code> block; expiration cleanup is the fallback.</p></section>
+<section><h2>Retries and errors</h2><p>Persist one UUID idempotency key per intended lease and reuse it with an identical body after uncertain network outcomes. Do not create a new key for every retry. Credential responses can be replayed for at most 60 seconds; metadata GET never returns the secret.</p><table><thead><tr><th>Status / code</th><th>Connector action</th></tr></thead><tbody>
+<tr><td>400 · INVALID_INPUT / INVALID_IDEMPOTENCY_KEY</td><td>Fix the request; the idempotency header must contain a UUID.</td></tr>
+<tr><td>401</td><td>Refresh the token and retry the same request once. Check audience and issuer if it persists. Gateway errors may have a different body.</td></tr>
+<tr><td>403 · PROFILE_FORBIDDEN / NOT_OWNER</td><td>Check scopes, backend mapping and connector identity. Do not retry unchanged.</td></tr>
+<tr><td>409 · ISSUANCE_PENDING</td><td>Back off and retry with the same key and body.</td></tr>
+<tr><td>409 · IDEMPOTENCY_CONFLICT</td><td>The same key was used with a different body. Do not overwrite its meaning.</td></tr>
+<tr><td>409 · CREDENTIALS_NOT_REPLAYABLE</td><td>Use the returned lease ID to inspect/revoke the original lease. Request a new lease only as a deliberate replacement.</td></tr>
+<tr><td>422 · UNSUPPORTED_SCOPE</td><td>Choose a profile returned by GET /v1/config.</td></tr>
+<tr><td>429 · POOL_EXHAUSTED / RATE_LIMITED</td><td>Honor Retry-After. Bound concurrency; an idle slot in another profile is not interchangeable.</td></tr>
+<tr><td>503</td><td>Back off. Preserve the idempotency key; if a lease ID is supplied, inspect that lease. Cleanup or dependency health may be blocking issuance.</td></tr>
+</tbody></table><p>Backend errors use <code>{"error":{"code":"…","correlation_id":"…","lease_id":"…"}}</code>; lease_id is optional. Log correlation IDs and status codes, never tokens, credentials, Authorization headers, or raw issuance responses.</p></section>
+<section><h2>Endpoints and implementation checklist</h2><ul><li><code>GET /v1/config</code> — authorized profiles and TTL bounds.</li><li><code>POST /v1/leases</code> — create or replay credentials.</li><li><code>GET /v1/leases/{lease_id}</code> — metadata and cleanup status.</li><li><code>DELETE /v1/leases/{lease_id}</code> — early revocation.</li><li><code>GET /v1/leases</code> — up to 100 recent leases for the connector.</li></ul><p>Metrics, audit, test-setup and lease-test endpoints support demo diagnostics. The <code>/auth/*</code> and <code>/connector/*</code> routes belong to the browser demo and are not the server-to-server integration API.</p><ul><li>Store OAuth client secrets in a secret manager; cache JWTs only until their expiry.</li><li>Keep S3 secrets in memory and bound credential caching to the lease deadline.</li><li>Stop using credentials at the deadline even if a later S3 request might succeed.</li><li>Renew by creating a distinct lease; there is no extend/renew endpoint. Allow spare pool capacity for overlap.</li><li>Test retries, ownership errors, pool exhaustion, propagation and cleanup with the actual Unity engine.</li></ul></section>
+<aside><h2>Current acceptance limits</h2><p>This is a live OCI test deployment, not production-ready. Actual Unity Catalog/query-engine compatibility remains unaccepted. Customer Secret Keys do not have native STS expiry: IAM deletion and S3 enforcement can be delayed. Earlier tests observed successful reads 237.995 seconds after the deadline despite confirmed key absence. Requested deadlines are not guaranteed hard access cutoffs; no production issuance-latency guarantee has been established.</p></aside>
+<footer>Published reference for the current Identity Domain → API Gateway → Lifecycle architecture. <a href="/docs">Open interactive reference</a>.</footer>
+</main></body></html>

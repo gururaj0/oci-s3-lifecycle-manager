@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "OCI S3 Credential Lifecycle Manager",
-    "description": "Explicit mock demo. Managed key deletion is not native STS expiry.",
-    "version": "0.1.0"
+    "description": "Lease OCI S3 credentials using an Identity Domains service access JWT. See /unity for onboarding and examples. Credentials use managed key deletion, not native STS expiry. Never log credential responses.",
+    "version": "0.2.0"
   },
   "paths": {
     "/health/live": {
@@ -19,7 +19,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Health"
+        ]
       }
     },
     "/health/ready": {
@@ -35,7 +38,10 @@
               }
             }
           }
-        }
+        },
+        "tags": [
+          "Health"
+        ]
       }
     },
     "/v1/config": {
@@ -44,18 +50,86 @@
         "operationId": "config_v1_config_get",
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Profiles authorized for this connector identity and token scopes",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/Configuration"
+                }
               }
             }
+          },
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
           }
         },
         "security": [
           {
             "HTTPBearer": []
           }
+        ],
+        "tags": [
+          "Discovery"
         ]
       }
     },
@@ -65,28 +139,109 @@
         "operationId": "leases_v1_leases_get",
         "responses": {
           "200": {
-            "description": "Successful Response",
+            "description": "Up to 100 most recent owner-bound, authorized leases",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "leases": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/LeaseMetadata"
+                      }
+                    }
+                  }
+                }
               }
             }
+          },
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
           }
         },
         "security": [
           {
             "HTTPBearer": []
           }
+        ],
+        "tags": [
+          "Lease lifecycle"
         ]
       },
       "post": {
-        "summary": "Create",
+        "summary": "Create a lease or replay the same request",
         "operationId": "create_v1_leases_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateLease"
+              },
+              "example": {
+                "scope_profile": "sales-read",
+                "ttl_seconds": 900,
+                "client_request_id": "unity-query-123"
               }
             }
           },
@@ -94,19 +249,94 @@
         },
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
+            "description": "Existing credentials replayed within the bounded window",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/LeaseCredentials"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
+          },
+          "422": {
+            "description": "Unsupported profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "New credential lease created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseCredentials"
                 }
               }
             }
@@ -115,6 +345,22 @@
         "security": [
           {
             "HTTPBearer": []
+          }
+        ],
+        "tags": [
+          "Lease lifecycle"
+        ],
+        "description": "One UUID Idempotency-Key per intended lease. Reuse it with the identical body on retries. TTL is measured from IAM key creation. Secret response replay is bounded to 60 seconds.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Owner-bound UUID; preserve across retries."
           }
         ]
       }
@@ -142,24 +388,82 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
+            "description": "Owner-bound lease metadata; no credential secret",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/LeaseMetadata"
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
           }
-        }
+        },
+        "tags": [
+          "Lease lifecycle"
+        ]
       },
       "delete": {
         "summary": "Delete",
@@ -182,6 +486,86 @@
           }
         ],
         "responses": {
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
+          },
+          "202": {
+            "description": "Revocation requested. Poll GET until status is REVOKED."
+          },
+          "204": {
+            "description": "Lease was already revoked; empty response."
+          }
+        },
+        "tags": [
+          "Lease lifecycle"
+        ]
+      }
+    },
+    "/v1/test-setup": {
+      "get": {
+        "summary": "Test Setup",
+        "operationId": "test_setup_v1_test_setup_get",
+        "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
@@ -190,76 +574,84 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "400": {
+            "description": "Invalid input or idempotency key",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "/demo/info": {
-      "get": {
-        "summary": "Info",
-        "operationId": "info_demo_info_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
               }
             }
-          }
-        }
-      }
-    },
-    "/demo/session": {
-      "post": {
-        "summary": "Session",
-        "operationId": "session_demo_session_post",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
+          },
+          "404": {
+            "description": "Resource not found",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
               }
             }
-          }
-        }
-      }
-    },
-    "/demo/metrics": {
-      "get": {
-        "summary": "Metrics",
-        "operationId": "metrics_demo_metrics_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
               }
             }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
           }
         },
         "security": [
           {
             "HTTPBearer": []
           }
+        ],
+        "tags": [
+          "Demo diagnostics"
         ]
       }
     },
-    "/demo/audit": {
+    "/v1/metrics": {
       "get": {
-        "summary": "Audit",
-        "operationId": "audit_demo_audit_get",
+        "summary": "Live Metrics",
+        "operationId": "live_metrics_v1_metrics_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -268,28 +660,198 @@
                 "schema": {}
               }
             }
+          },
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
           }
         },
         "security": [
           {
             "HTTPBearer": []
           }
+        ],
+        "tags": [
+          "Demo diagnostics"
         ]
       }
     },
-    "/demo/probe": {
+    "/v1/audit": {
+      "get": {
+        "summary": "Live Audit",
+        "operationId": "live_audit_v1_audit_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "tags": [
+          "Demo diagnostics"
+        ]
+      }
+    },
+    "/v1/leases/{lease_id}/tests": {
       "post": {
-        "summary": "Probe",
-        "operationId": "probe_demo_probe_post",
+        "summary": "Live Test",
+        "operationId": "live_test_v1_leases__lease_id__tests_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "lease_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Lease Id"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Probe"
+                "$ref": "#/components/schemas/LiveTest"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -300,38 +862,73 @@
               }
             }
           },
-          "422": {
-            "description": "Validation Error",
+          "400": {
+            "description": "Invalid input or idempotency key",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ApiError"
                 }
               }
             }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
-    "/.well-known/jwks.json": {
-      "get": {
-        "summary": "Jwks",
-        "operationId": "jwks__well_known_jwks_json_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
               }
             }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
           }
-        }
+        },
+        "tags": [
+          "Demo diagnostics"
+        ]
       }
     }
   },
@@ -348,7 +945,10 @@
           "ttl_seconds": {
             "type": "integer",
             "title": "Ttl Seconds",
-            "default": 900
+            "default": 900,
+            "minimum": 300,
+            "maximum": 3600,
+            "description": "Seconds from key creation; this is not a native STS expiration."
           },
           "client_request_id": {
             "anyOf": [
@@ -383,49 +983,40 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "Probe": {
+      "LiveTest": {
         "properties": {
-          "lease_id": {
-            "type": "string",
-            "format": "uuid",
-            "title": "Lease Id"
-          },
           "access_key_id": {
             "type": "string",
             "maxLength": 128,
+            "minLength": 1,
             "title": "Access Key Id"
           },
           "secret_access_key": {
             "type": "string",
             "maxLength": 256,
+            "minLength": 1,
             "title": "Secret Access Key"
           },
           "operation": {
             "type": "string",
+            "enum": [
+              "GET",
+              "LIST",
+              "PUT",
+              "DELETE",
+              "FOREIGN"
+            ],
             "title": "Operation",
             "default": "GET"
-          },
-          "bucket": {
-            "type": "string",
-            "maxLength": 80,
-            "title": "Bucket",
-            "default": "sales-demo"
-          },
-          "object_name": {
-            "type": "string",
-            "maxLength": 256,
-            "title": "Object Name",
-            "default": "quarterly/revenue.csv"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "required": [
-          "lease_id",
           "access_key_id",
           "secret_access_key"
         ],
-        "title": "Probe"
+        "title": "LiveTest"
       },
       "ValidationError": {
         "properties": {
@@ -466,6 +1057,233 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "LeaseCredentials": {
+        "type": "object",
+        "required": [
+          "lease_id",
+          "status",
+          "access_key_id",
+          "secret_access_key",
+          "endpoint",
+          "region",
+          "scope_profile",
+          "expires_at",
+          "expiry_mode"
+        ],
+        "properties": {
+          "access_key_id": {
+            "type": "string"
+          },
+          "secret_access_key": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "scope_profile": {
+            "type": "string"
+          },
+          "lease_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ACTIVE"
+            ]
+          },
+          "endpoint": {
+            "type": "string",
+            "format": "uri"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiry_mode": {
+            "type": "string",
+            "enum": [
+              "managed_key_deletion"
+            ]
+          }
+        }
+      },
+      "LeaseMetadata": {
+        "type": "object",
+        "required": [
+          "lease_id",
+          "status",
+          "scope_profile"
+        ],
+        "properties": {
+          "lease_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PREPARING",
+              "SCHEDULE_PENDING",
+              "ACTIVE",
+              "REVOKE_PENDING",
+              "REVOKED"
+            ]
+          },
+          "scope_profile": {
+            "type": "string"
+          },
+          "service_user_id": {
+            "type": "string"
+          },
+          "profile_version": {
+            "type": "integer"
+          },
+          "requested_ttl": {
+            "type": "integer"
+          },
+          "generation": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "key_created_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "delivered_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "deleted_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "correlation_id"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "correlation_id": {
+                "type": "string"
+              },
+              "lease_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "bucket": {
+            "type": "string"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "version": {
+            "type": "integer"
+          },
+          "group_id": {
+            "type": "string"
+          }
+        }
+      },
+      "Configuration": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "expiry_mode": {
+            "type": "string"
+          },
+          "replay_seconds": {
+            "type": "integer"
+          },
+          "ttl": {
+            "type": "object",
+            "properties": {
+              "default": {
+                "type": "integer"
+              },
+              "min": {
+                "type": "integer"
+              },
+              "max": {
+                "type": "integer"
+              }
+            }
+          },
+          "profiles": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Profile"
+            }
+          },
+          "identity": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "type": "string"
+              },
+              "subject": {
+                "type": "string"
+              }
+            }
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -474,5 +1292,14 @@
         "scheme": "bearer"
       }
     }
+  },
+  "servers": [
+    {
+      "url": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com"
+    }
+  ],
+  "externalDocs": {
+    "description": "Unity connector integration guide",
+    "url": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/unity"
   }
 }
