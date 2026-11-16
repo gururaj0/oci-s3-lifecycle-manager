@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import zipfile
 import sys
-from deploy_oci import ROOT,oci
+from oci_cli import ROOT,oci
 p=argparse.ArgumentParser();p.add_argument('action',choices=['create','update','status','logs']);args=p.parse_args()
 record=ROOT/'.local/live-deployment.json'
 variables=json.loads((ROOT/'.local/live-variables.json').read_text())

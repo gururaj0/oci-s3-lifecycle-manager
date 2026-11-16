@@ -1,0 +1,143 @@
+{
+  "stack_id": "ocid1.ormstack.oc1.iad.amaaaaaa5kvp65iauzugdd2oy4friv4bdjhdulqgc6y3fs3qccidvstjrslq",
+  "job_id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65iawekip6x42bgh2r4ibllnyskglexk2jf4xw6pfz3mozmq",
+  "compartment_id": "ocid1.compartment.oc1..aaaaaaaav6gvasmb4eyn6fnuuaoabal6mdfzuu4qxf3ll5kidwj24jxcn3dq",
+  "mock_drained": true,
+  "audit_exported": true,
+  "live_dependencies_on_legacy_resources": false,
+  "obsolete_images_deleted": [
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaaf7rup2u3kkzghbj33go6fysic73yus24duixs3fcqr7psbi6sojq",
+      "digest": "sha256:803f45817aa9c54ee464db66488d2311e7f145998ba62e26dcb69982cd868e7e",
+      "name": "lcm-live-v2/worker:v020-0084090b0670",
+      "created": "2026-11-12 16:05:28.063000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaa5hyt4vhixo2dhko6f6lh2z437mklhcvvqvk62lpscvwtfbmlsvyq",
+      "digest": "sha256:a959a0505103687a91488316f0e4e36b39a8786ef8391de60abdd1f13d1a93d6",
+      "name": "lcm-live-v2/worker:v020-307eefad9928",
+      "created": "2026-11-13 21:40:11.875000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaagbutudodmmlb72uqyj6w6ss3t4x6ydalr26dgdsjfsqvt4pb3qba",
+      "digest": "sha256:e183b57e620e21ce70ba9f6c3b107fecdabc65487bbb86ef9f51f17b416886c0",
+      "name": "lcm-live-v2/worker:v020-3ba2a5442b67",
+      "created": "2026-11-12 14:55:48.296000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaaq4sawbnuwp52wzpqw6ogmjlew35lxkcfuyotbatiieogmtzpbwka",
+      "digest": "sha256:d3e17f5f5280b025a33f4dad2f42c07658b3bd00d8ee1d152bf60050fbea48e4",
+      "name": "lcm-live-v2/worker:v020-51dc4d689be4",
+      "created": "2026-11-12 14:58:38.789000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaal3gh6scv7adkwjeny7wttl6ssysaiozgftx55tvdy7wshc7kwqfq",
+      "digest": "sha256:08138fba7238e6cc51dee3e2828730a18c045771b8352933568e7cda6973d614",
+      "name": "lcm-live-v2/worker:v020-57e8ee44e5e3",
+      "created": "2026-11-12 15:41:49.809000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaajscy66tq5gtwbzq3x3jcb5axqywj2gtauoiccygfpmkvq4imurga",
+      "digest": "sha256:0722bbbc7bfea15d9f45fb2f598368de3dbaed953f224bbc45ca20e27b5972a6",
+      "name": "lcm-live-v2/worker:v020-5a3eef5afe99",
+      "created": "2026-11-12 16:36:02.099000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaa7vy35bvoumusdzkho3wxhzxkbsuvajzaqamelstgyn7ch6blf5ua",
+      "digest": "sha256:633313a0142d453dd15791d2568b394b8fb0fe31e637684d2bd2656038de8b01",
+      "name": "lcm-live-v2/worker:v020-5ba977645d5f",
+      "created": "2026-11-12 17:08:38.803000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaazfdsgae7cgom2jctavdpp56wolgtbgtuauo7dty4bvef7fcv3ifa",
+      "digest": "sha256:dd193d09a742a2772f646e8af62c0c211922a725060b5ec8b6af7bfb35267d5e",
+      "name": "lcm-live-v2/worker:v020-5fc5c073c272",
+      "created": "2026-11-13 21:46:03.622000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaaupqc3iwdihh5f2jhgiyoar74ol4kxxf4il2hxlznoujmjva2ztwa",
+      "digest": "sha256:5a07168bdd2d172d2baa99f6da346d460a4df04c2f6ef76b9942b09e1517b1fe",
+      "name": "lcm-live-v2/worker:v020-602b5b180b29",
+      "created": "2026-11-13 23:45:01.002000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaaaraj33qrnw5g6atuss7mvxrjfv6fl37n4g44lyaloyta6lyf2y4a",
+      "digest": "sha256:8893cba36e87bcfa384335ccc3b94e93213af317483313283318d6c977beeeb6",
+      "name": "lcm-live-v2/worker:v020-6119970c2ebf",
+      "created": "2026-11-16 13:05:40.669000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaaf3tuzmanz2oaadbgq34th2zlzbaah4f7ovum3qjmrrhftnojlhlq",
+      "digest": "sha256:1caf30860b67affabfdbc5198174fa594ef57cfa1aaa40c209ca8aa12cf3b574",
+      "name": "lcm-live-v2/worker:v020-74601d81f689",
+      "created": "2026-11-12 16:24:39.773000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaanpu37np43l23cvbonlocftoj5ibffetqj2guddnxu6wzzbkbo5ca",
+      "digest": "sha256:e95b621880ee5c9dc1b50fab098cfdf5973de1757ec661956cd2d1074fcf4a71",
+      "name": "lcm-live-v2/worker:v020-9b616a52383b",
+      "created": "2026-11-12 15:37:59.036000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaa2zobzhfndf6kgbcm4a747cuulnnl7maoiqhby2xewrye6cv7pe3a",
+      "digest": "sha256:862ca37c2c60369b2bad808aee5e6d3060a44302c300171b86f5a654e099501b",
+      "name": "lcm-live-v2/worker:v020-a27b8e56b9e7",
+      "created": "2026-11-12 15:49:43.061000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaatzoh23zn3qnyru6n4wc3e4wa7zw4zzz7pxp2iuhs55mhengzq54a",
+      "digest": "sha256:f6f0c49df7293ba84d7d732102e3fbed09e1f790fdddec5be6ee60413e5cec82",
+      "name": "lcm-live-v2/worker:v020-a579f2eaf4ca",
+      "created": "2026-11-12 15:59:09.222000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaafi7m7nrlqdwd377napw2mtz3ewwa2m4jkb7s5xf5oqprtxsp2vwq",
+      "digest": "sha256:89cb8c36bafe4b6534521f3ca93ccc52216216f71d0d9546b7108b81bd979a18",
+      "name": "lcm-live-v2/worker:v020-a59ad389af64",
+      "created": "2026-11-13 22:05:43.322000+00:00"
+    },
+    {
+      "id": "ocid1.containerimage.oc1.iad.0.iddjqcmpf2tk.aaaaaaaazpd4klsiqbrbpj5asvc4xd52n2ifcs4umbmkydlyctige45wz4dq",
+      "digest": "sha256:00d03e64a8ef8c9c1d1c231e47c6ebf2677f7ccd92ddf6ee55977aed8ab76e7e",
+      "name": "lcm-live-v2/worker:v020-c40e2f3ddb72",
+      "created": "2026-11-12 17:28:44.783000+00:00"
+    }
+  ],
+  "images_retained": [
+    "sha256:0a5ca2556d98ad67aca0373594c7f19223e2f67efe71527c7bdb74765460f556",
+    "sha256:445a8bb3d15eba802787dc2dab5f8bda116e8c0d49028bb3621bef53590ff8bf"
+  ],
+  "obsolete_schedules_deleted": [
+    {
+      "id": "ocid1.resourceschedule.oc1.iad.amaaaaaa5kvp65iailsfgor3sqe6wwr2u3b4gjigr37n5ytmflflk4nsiywq",
+      "name": "lcm-live-v2-15a7da3b-60c5-452f-ad53-8828b7ac64d5-1",
+      "reason": "Inactive expired one-shot; lease absent from current ledger"
+    },
+    {
+      "id": "ocid1.resourceschedule.oc1.iad.amaaaaaa5kvp65iasvdeomrz45hlo7viheulrciotyxamcxgcp5bhqs2lc6q",
+      "name": "lcm-live-v2-0e6c1c02-7ef6-452d-a0a1-a0af1678175c-1",
+      "reason": "Inactive expired one-shot; lease absent from current ledger"
+    }
+  ],
+  "legacy_destroy_state": "SUCCEEDED",
+  "legacy_managed_resources_remaining": 0,
+  "legacy_boot_volume_state": "TERMINATED",
+  "obsolete_artifact_deletions_verified": true,
+  "recurring_reconciler_active": true,
+  "live_read_only_checks": {
+    "/": 200,
+    "/health/live": 200,
+    "/health/ready": 200,
+    "/docs": 200,
+    "anonymous_api_rejected": true,
+    "/v1/config": 200,
+    "/v1/metrics": 200,
+    "/v1/test-setup": 200
+  },
+  "unit_tests_passed": 69,
+  "release_scan_passed": true,
+  "cleaned_runtime_deployed": false,
+  "rollout_blocker": "Automatic approval review requires explicit approval for live build/deployment",
+  "empty_legacy_stack_deleted": true,
+  "empty_legacy_stack_deletion_verified": true
+}

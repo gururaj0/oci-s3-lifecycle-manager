@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 import oci
-from deploy_oci import ROOT
+from oci_cli import ROOT
 s=json.loads((ROOT/'.local/live.tfstate').read_text());settings=json.loads((ROOT/'.local/live-variables.json').read_text())
 a={(r['type'],r['name']):r['instances'] for r in s['resources']}
 groups={x['index_key']:x['attributes']['id'] for x in a['oci_identity_group','scope']}

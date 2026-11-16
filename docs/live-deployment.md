@@ -1,3 +1,6 @@
+> Current status: the obsolete mock OCI deployment and custom JWT issuer were retired on 2026-11-16.
+> Earlier mock/redirect statements below are historical. See [cleanup record](cleanup.md) and [current authentication](gateway-auth.md).
+
 # Live OCI integration demo — 0.2.0
 
 The live adapters are implemented. IAM, private Autonomous Database, Vault replay storage,
@@ -125,10 +128,10 @@ nonsecret configuration: `python scripts/live_operator.py status|pause|resume|dr
 operator actions. Drain disables issuance, revokes owned keys and checks every managed user;
 only `safe_to_remove:true` permits removal. Preserve audit exports and customer buckets.
 
-Acceptance helpers use real services and keep tokens/credentials in process memory:
-`scripts/live_acceptance.py --expiry --scheduler-only` observes a five-minute lease with
-the API/timer stopped, restoring them afterward; `--performance-only --count 100` measures
-sequential HTTPS issuance and revocation. Run these only in the dedicated demo environment.
+Current authentication and S3 acceptance uses `scripts/gateway_auth_smoke.py` and
+`scripts/gateway_ui_smoke.py`. The earlier custom-issuer expiry/load and hard-coded rollback
+helpers have been retired; their historical evidence remains below. A current-architecture
+expiry/load harness is still needed before rerunning those outstanding acceptance gates.
 
 ## Historical paused handoff — 2026-11-12
 

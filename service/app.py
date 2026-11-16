@@ -107,12 +107,6 @@ def create_app(lcm=None, worker=True):
     @app.middleware('http')
     async def safety_headers(request,call_next):
         request.state.correlation=str(uuid.uuid4())
-        # Retire the old public demo while retaining its existing issuer's public key.
-        # The private operator can still mint a mapped test identity through the bastion.
-        if e.cfg.mode=='mock' and e.cfg.live_redirect_url and request.url.path!='/.well-known/jwks.json':
-            response=RedirectResponse(e.cfg.live_redirect_url+request.url.path,status_code=307)
-            response.headers['Cache-Control']='no-store'
-            return response
         if e.cfg.mode=='oci' and (request.url.path.startswith('/demo/') or request.url.path.startswith('/mock-s3/') or request.url.path=='/.well-known/jwks.json'):
             return JSONResponse({'error':{'code':'NOT_FOUND','correlation_id':request.state.correlation}},status_code=404,headers={'Cache-Control':'no-store'})
         # Bound payloads, including streamed bodies. Do not log tokens, request/response bodies or URLs.

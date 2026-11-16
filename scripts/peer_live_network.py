@@ -4,7 +4,7 @@ Preserves all current routes with etag concurrency; cleanup removes only this ow
 import json
 from pathlib import Path
 import oci
-from deploy_oci import ROOT
+from oci_cli import ROOT
 config=oci.config.from_file();network=oci.core.VirtualNetworkClient(config)
 settings=json.loads((ROOT/'.local/live-variables.json').read_text())
 peers=network.list_local_peering_gateways(settings['compartment_ocid'],vcn_id=settings['vcn_id']).data

@@ -9,7 +9,7 @@ import oci
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
-from deploy_oci import ROOT
+from oci_cli import ROOT
 c=oci.config.from_file();iam=oci.identity.IdentityClient(c);os=oci.object_storage.ObjectStorageClient(c)
 scope=json.loads((ROOT/'.local/live-scope.json').read_text());user=scope['users']['sales-read-2']
 assert os.get_object(scope['namespace'],scope['bucket'],'quarterly/revenue.csv').data.content.startswith(b'quarter,revenue')

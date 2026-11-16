@@ -38,7 +38,6 @@ class Config:
     overdue_threshold: int = 60
     worker_interval: float = 2.0
     public_url: str = ''
-    live_redirect_url: str = ''
     rate_limit: int = 60
     identities: dict = field(default_factory=dict)
     profile_scopes: dict = field(default_factory=dict)
@@ -61,9 +60,6 @@ class Config:
         cfg.mode = os.getenv('LCM_MODE', cfg.mode)
         cfg.state_dir = Path(os.getenv('LCM_STATE_DIR', str(cfg.state_dir)))
         cfg.public_url = os.getenv('LCM_PUBLIC_URL', cfg.public_url).rstrip('/')
-        cfg.live_redirect_url = os.getenv('LCM_LIVE_DEMO_URL', cfg.live_redirect_url).rstrip('/')
-        if cfg.live_redirect_url and not cfg.live_redirect_url.startswith('https://'):
-            raise ValueError('The live demo redirect requires HTTPS')
         if cfg.mode not in ('mock', 'oci'):
             raise ValueError('LCM_MODE must be mock or oci')
         if cfg.auth_mode not in ('jwt','gateway'):

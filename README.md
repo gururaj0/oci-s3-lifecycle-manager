@@ -2,11 +2,11 @@
 
 **0.2.0 live integration demo** adds real workload-principal IAM Customer Secret Keys,
 a private Autonomous Database ledger, Vault replay storage, OCI Functions, Resource Scheduler,
-and external cleanup alarms. The previous public mock URL now redirects to the live deployment.
+and external cleanup alarms. The obsolete public mock deployment has been retired.
 See [live deployment and evidence](docs/live-deployment.md) for current acceptance results.
 Actual Unity/query-engine integration remains outstanding; production readiness stays false.
 
-See [deployed demo and evidence](docs/deployment.md), [acceptance matrix](docs/acceptance.md),
+See [cleanup record](docs/cleanup.md), [acceptance matrix](docs/acceptance.md),
 [capability decisions](docs/decisions.md), [threat model](docs/threat-model.md) and
 [operations/drain runbook](docs/operations.md).
 
@@ -36,8 +36,8 @@ not your personal OCI user.
 
 ## Original mock demo
 
-The original mock release remains available for local use. Its former public URL redirects
-to live OCI, including API requests; anonymous synthetic credential minting is no longer public.
+The mock remains available for local development and unit tests. Its former OCI deployment,
+custom issuer and redirect URL have been retired. Use the live URL above.
 
 The browser opens a signed synthetic session, lets you request a READ or READ_WRITE profile,
 issues a distinct fake key from a two-user pool, and tests AWS Signature V4 reads/writes and denials.
@@ -76,38 +76,16 @@ confirmed deletion 204). `/v1/config` discovers authorized profiles. `/health/li
 return redacted health. The generated [OpenAPI spec](openapi/openapi.json) and [reference wrapper](wrapper/client.py)
 are included. `/demo/*` and `/mock-s3/*` are intentionally synthetic demo surfaces.
 
-## Deploy the original mock to OCI
+## Deploy to OCI
 
-The current mock release supports **existing-network mode** and public/private gateway choice.
-Use your OCI CLI default profile and home region. The deployment helper independently resolves and
-checks the active `Demo` compartment before creation. SSH uses existing public DemoBastion and the
-operator's supplied local key; the new VM has no public IP or unrestricted SSH.
-
-1. Run `python scripts/preflight.py` and record the verified compartment OCID/home region.
-2. Configure `.local/stack-variables.json` with the variables in `infra/variables.tf`: verified placement,
-   existing VCN/gateway subnet/NAT route table, unused private subnet CIDR, image OCID, bastion private
-   IP and **public** SSH key. Never put a private key in variables or state.
-3. Build `python scripts/package.py`. Upload `release/oci-s3-lcm-0.1.0-mock.zip` to a new Resource
-   Manager stack, Terraform 1.5.x, review its form/costs and run Apply. The supplied deployment helper
-   `python scripts/deploy_oci.py` performs the same authenticated stack create/apply using OCI CLI.
-4. Check the readiness output; an apply succeeds before application readiness is guaranteed.
-5. Run `python scripts/smoke.py https://<gateway-host> --expiry --performance 100`.
-
-The archive embeds the versioned source and pinned runtime lock in compressed cloud-init, verified
-by SHA-256. VM bootstrap installs it and starts API plus independent cleanup without local Docker,
-Fn CLI or manual image pushes. Runtime uses a dedicated OS user and systemd hardening. Billable
-resources: one E5 Flex 1-OCPU/8-GB VM with 50-GB boot disk and API Gateway. Existing NAT/VCN/bastion
-are reused without modifications. Drain before destroying or replacing the stack.
-
-The public Deploy-to-Oracle-Cloud URL requires an externally hosted supported archive source.
-This local repository has not been published. Use the authenticated ZIP-upload stack flow above;
-[release/README.md](release/README.md) documents constructing the button when a release URL exists.
-No unusable public button or fabricated release URL is supplied.
+Use `infra/live/`, `scripts/live_stack.py` and the private Resource Manager package described
+in [release instructions](release/README.md). The retired mock deployment assets are available
+only in Git history. Existing DemoBastion and the operator's existing SSH key remain in use.
 
 ## Repository
 
 `shared/` lifecycle plus mock and OCI adapters; `service/` API/JWT/UI; `functions/live_handler.py`
-deployed setup/deletion/reconciliation handler; `infra/` original mock stack; `infra/live/` live
+deployed setup/deletion/reconciliation handler; `infra/live/` live
 Resource Manager stack and automatic private-artifact bootstrap; `db/migrations/` applied Oracle
 schema; `wrapper/` reference adapter; `tests/` local contracts; `scripts/` build, deployment,
 acceptance and operations; `release/` pinned live manifest; `docs/` redacted evidence.

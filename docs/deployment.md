@@ -1,3 +1,6 @@
+> Current status: the obsolete mock OCI deployment and custom JWT issuer were retired on 2026-11-16.
+> Earlier mock/redirect statements below are historical. See [cleanup record](cleanup.md) and [current authentication](gateway-auth.md).
+
 # OCI deployment — 0.1.0 mock
 
 [Open the live demo](https://exjtqqyg54c5dek5vgprfx3no4.apigateway.us-ashburn-1.oci.customer-oci.com/)
