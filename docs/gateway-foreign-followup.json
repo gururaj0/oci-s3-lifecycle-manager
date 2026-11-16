@@ -1,0 +1,23 @@
+{
+  "fixture_independently_verified": true,
+  "initial_ui_result": {
+    "status": 404,
+    "classification": "ERROR"
+  },
+  "observations": [
+    {
+      "status": 403,
+      "code": "SignatureDoesNotMatch"
+    },
+    {
+      "status": 403,
+      "code": "SignatureDoesNotMatch"
+    },
+    {
+      "status": 403,
+      "code": "SignatureDoesNotMatch"
+    }
+  ],
+  "positive_read_control": true,
+  "only_probe_lease_revoked": true
+}

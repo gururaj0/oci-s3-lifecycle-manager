@@ -32,8 +32,17 @@
       "http_status": 403,
       "observed_access": "DENY",
       "matches_expectation": true
+    },
+    "FOREIGN": {
+      "http_status": 404,
+      "observed_access": "ERROR",
+      "matches_expectation": false
     }
   },
   "production_ready": false,
-  "passed": false
+  "passed": false,
+  "authentication_and_authorization_checks_passed": true,
+  "s3_suite_passed": false,
+  "foreign_followup": "gateway-foreign-followup.json",
+  "limitation": "Foreign fixture exists and positive read control succeeded, but follow-up foreign requests returned SignatureDoesNotMatch (403). No foreign data was returned; IAM-specific denial is not conclusively isolated."
 }

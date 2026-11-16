@@ -73,3 +73,15 @@ lease. Evidence is recorded in `gateway-auth-live-evidence.json` and
 
 For API clients, the endpoint remains `/v1/...` with `Authorization: Bearer <token>`.
 For UI users, refresh the page and use **Sign in with OCI**. No token copying is required.
+
+## Recorded result
+
+The deployment and live gateway trust-boundary checks passed, and the user confirmed
+interactive sign-in, controls and metrics after the split. Seventy unit tests passed.
+Native GET, LIST and PUT succeeded and DELETE returned 403. The foreign-bucket check
+returned an ambiguous 404. A follow-up independently verified the fixture exists and
+successfully read the permitted bucket with the same credential before observing three
+foreign-read responses of `403 SignatureDoesNotMatch`. No foreign data was returned, but
+this does not conclusively isolate IAM policy denial; the combined S3 suite remains
+marked incomplete rather than being reported as a clean pass. Both test leases were
+revoked. See `gateway-foreign-followup.json` for the preserved observations.

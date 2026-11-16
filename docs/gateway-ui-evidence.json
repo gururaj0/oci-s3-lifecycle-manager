@@ -9,5 +9,6 @@
     "live_readiness": true
   },
   "passed": true,
-  "interactive_sign_in": "pending user confirmation after gateway split"
+  "interactive_sign_in": "User confirmed sign-in, controls and metrics work after gateway split",
+  "interactive_confirmation_source": "user reply"
 }
