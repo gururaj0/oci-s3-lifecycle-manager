@@ -32,6 +32,16 @@ async function refresh(){
  if(!identity||refreshing)return;refreshing=true;
  try{
   const [data,metrics,audit]=await Promise.all([call('/v1/leases'),call('/v1/metrics'),call('/v1/audit')]);leases=data.leases;renderLeases();
+  if(response){
+   const current=leases.find(l=>l.lease_id===response.lease_id);
+   if(current){
+    response.status=current.status;
+    if(['REVOKE_PENDING','REVOKED'].includes(current.status)){
+     response=null;by('live-secret').value='';by('live-access').textContent='';by('live-credential-body').hidden=true;
+     by('live-issuance-progress').textContent='Lease revoked or revocation in progress. These credentials must no longer be used.';
+    }else by('live-issuance-progress').textContent=current.status==='ACTIVE'?'Credentials available. Expiration cleanup and secure retry storage are ready.':'Credentials available · cleanup setup pending. Background failure will revoke this lease.';
+   }
+  }
   by('live-active').textContent=metrics.states.ACTIVE||0;
   by('live-pool').textContent=metrics.pools.reduce((n,p)=>n+p.allocated,0)+' / '+metrics.pools.reduce((n,p)=>n+p.capacity,0);
   by('live-overdue').textContent=metrics.overdue;by('live-heartbeat').textContent=metrics.healthy?'Healthy':'Attention';
@@ -58,14 +68,14 @@ by('live-issue').onsubmit=async e=>{
   finally{polling=false}
  },2000);
  try{
-  const issued=await call('/v1/leases',{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({scope_profile:by('live-profile').value,ttl_seconds:Number(by('live-ttl').value)})});
+  const issued=await call('/v1/leases',{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({scope_profile:by('live-profile').value,ttl_seconds:Number(by('live-ttl').value),delivery_mode:'immediate'})});
   if(version!==issuanceVersion||!identity)return;
   pending=false;response=issued;
   by('live-access').textContent=response.access_key_id;by('live-secret').value=response.secret_access_key;by('live-secret').type='password';
   by('live-endpoint').textContent=response.endpoint;by('live-response').textContent=JSON.stringify({lease_id:response.lease_id,scope_profile:response.scope_profile,expires_at:response.expires_at,expiry_mode:response.expiry_mode},null,2);
   by('live-probe-result').textContent='Run before and after revocation. New keys may take several minutes to reach S3.';
-  by('live-issuance-progress').textContent='Credentials ready. Expiration cleanup is scheduled.';
-  by('live-issuance-time').textContent='Ready in '+Math.floor((Date.now()-started)/1000)+' seconds';by('live-credential-body').hidden=false;
+  by('live-issuance-progress').textContent=response.status==='ACTIVE'?'Credentials available. Expiration cleanup is scheduled.':'Credentials available · cleanup setup pending. Background failure will revoke this lease.';
+  by('live-issuance-time').textContent='Credentials returned in '+Math.floor((Date.now()-started)/1000)+' seconds';by('live-credential-body').hidden=false;
   by('live-status').textContent='Real OCI credentials are ready above Your leases.';await refresh();await inventory();
  }catch(error){
   if(version===issuanceVersion){by('live-status').textContent=error.message;by('live-issuance-progress').textContent='Request did not complete: '+error.message+'. Check Your leases before requesting another lease.';by('live-issuance-time').textContent=Math.floor((Date.now()-started)/1000)+' seconds elapsed';}

@@ -16,7 +16,7 @@ def install_reference(app, cfg):
         schemas['LeaseCredentials'] = {
             'type': 'object', 'required': ['lease_id','status','access_key_id','secret_access_key','endpoint','region','scope_profile','expires_at','expiry_mode'],
             'properties': {**{k:{'type':'string'} for k in ['access_key_id','secret_access_key','region','scope_profile']},
-                'lease_id':{'type':'string','format':'uuid'}, 'status':{'type':'string','enum':['ACTIVE']},
+                'lease_id':{'type':'string','format':'uuid'}, 'status':{'type':'string','enum':['ACTIVE','SCHEDULE_PENDING']},
                 'endpoint':{'type':'string','format':'uri'}, 'expires_at':{'type':'string','format':'date-time'},
                 'expiry_mode':{'type':'string','enum':['managed_key_deletion']}}}
         schemas['LeaseMetadata'] = {'type':'object','required':['lease_id','status','scope_profile'], 'properties':{
@@ -71,7 +71,8 @@ def install_reference(app, cfg):
         post['summary']='Create a lease or replay the same request'
         post['description']='One UUID Idempotency-Key per intended lease. Reuse it with the identical body on retries. TTL is measured from IAM key creation. Secret response replay is bounded to 60 seconds.'
         post['parameters']=[{'name':'Idempotency-Key','in':'header','required':True,'schema':{'type':'string','format':'uuid'},'description':'Owner-bound UUID; preserve across retries.'}]
-        post['responses']['201']=response('LeaseCredentials','New credential lease created')
+        post['description']=post.get('description','')+' delivery_mode defaults to confirmed (wait for scheduling and Vault replay). immediate returns the real key after IAM creation and durable ledger/outbox recording with status SCHEDULE_PENDING; scheduling and Vault replay continue after the response. Background failure or abandoned setup causes revocation. Poll progress or lease metadata until ACTIVE. A lost response before replay storage is ready cannot recover the secret; retry the same Idempotency-Key, never create a replacement blindly. Native S3 propagation still applies.'
+        post['responses']['201']=response('LeaseCredentials','New credentials; immediate mode may still have cleanup setup pending')
         post['responses']['200']=response('LeaseCredentials','Existing credentials replayed within the bounded window')
         post['requestBody']['content']['application/json']['example']={'scope_profile':'sales-read','ttl_seconds':900,'client_request_id':'unity-query-123'}
         schemas['CreateLease']['properties']['ttl_seconds'].update(minimum=cfg.ttl_min,maximum=cfg.ttl_max,description='Seconds from key creation; this is not a native STS expiration.')

@@ -532,7 +532,7 @@
             }
           },
           "201": {
-            "description": "New credential lease created",
+            "description": "New credentials; immediate mode may still have cleanup setup pending",
             "content": {
               "application/json": {
                 "schema": {
@@ -550,7 +550,7 @@
         "tags": [
           "Lease lifecycle"
         ],
-        "description": "One UUID Idempotency-Key per intended lease. Reuse it with the identical body on retries. TTL is measured from IAM key creation. Secret response replay is bounded to 60 seconds.",
+        "description": "One UUID Idempotency-Key per intended lease. Reuse it with the identical body on retries. TTL is measured from IAM key creation. Secret response replay is bounded to 60 seconds. delivery_mode defaults to confirmed (wait for scheduling and Vault replay). immediate returns the real key after IAM creation and durable ledger/outbox recording with status SCHEDULE_PENDING; scheduling and Vault replay continue after the response. Background failure or abandoned setup causes revocation. Poll progress or lease metadata until ACTIVE. A lost response before replay storage is ready cannot recover the secret; retry the same Idempotency-Key, never create a replacement blindly. Native S3 propagation still applies.",
         "parameters": [
           {
             "name": "Idempotency-Key",
@@ -1352,6 +1352,15 @@
               }
             ],
             "title": "Client Request Id"
+          },
+          "delivery_mode": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "immediate"
+            ],
+            "title": "Delivery Mode",
+            "default": "confirmed"
           }
         },
         "additionalProperties": false,
@@ -1482,7 +1491,8 @@
           "status": {
             "type": "string",
             "enum": [
-              "ACTIVE"
+              "ACTIVE",
+              "SCHEDULE_PENDING"
             ]
           },
           "endpoint": {

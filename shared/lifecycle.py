@@ -74,7 +74,7 @@ class Lifecycle:
             raise Problem(409, 'CREDENTIALS_NOT_REPLAYABLE', r['id'])
         return 200, payload
 
-    def create(self, owner, body, idem, correlation, endpoint):
+    def create(self, owner, body, idem, correlation, endpoint, defer_setup=False):
         profile, ttl = body['scope_profile'], body['ttl_seconds']
         if profile not in self.cfg.profiles:
             raise Problem(422, 'UNSUPPORTED_SCOPE')
@@ -124,37 +124,60 @@ class Lifecycle:
                 c.execute('INSERT OR IGNORE INTO outbox(id,lease_id,generation,operation) VALUES(?,?,1,?)',
                           (lease_id+':1:setup',lease_id,'SETUP'))
                 self.db.audit(c,lease_id,'KEY_RECORDED',correlation)
-            # Confirm expiry first so asynchronous schedule creation does not consume
-            # the bounded response-replay window in Vault.
-            self.setup(lease_id,1)
-            payload = {'lease_id':lease_id,'status':'ACTIVE','access_key_id':key['id'],
+                if defer_setup:
+                    if expires<=time.time():raise RuntimeError('EXPIRED_DURING_SETUP')
+                    c.execute('UPDATE leases SET delivered_at=? WHERE id=?',(time.time(),lease_id))
+                    self.db.audit(c,lease_id,'DELIVERED_SETUP_PENDING',correlation)
+            payload = {'lease_id':lease_id,'status':'SCHEDULE_PENDING','access_key_id':key['id'],
                        'secret_access_key':key['secret'],'endpoint':endpoint,'region':self.cfg.region,
                        'scope_profile':profile,'expires_at':utc(expires),'expiry_mode':'managed_key_deletion'}
-            until = min(time.time()+self.cfg.replay_seconds,expires)
-            ref = self.cloud.store_response(payload, until)
-            with self.db.tx() as c:
-                c.execute('UPDATE leases SET replay_ref=?,replay_until=? WHERE id=?',(ref,until,lease_id))
-            with self.db.tx() as c:
-                r = c.execute('SELECT * FROM leases WHERE id=?',(lease_id,)).fetchone()
-                if time.time() >= expires or r['state'] != 'SCHEDULE_PENDING' or not r['schedule_id']:
-                    raise RuntimeError('EXPIRED_DURING_SETUP')
-                c.execute("UPDATE leases SET state='ACTIVE',delivered_at=? WHERE id=?",(time.time(),lease_id))
-                self.db.audit(c,lease_id,'DELIVERED',correlation)
-            return 201,payload
+            if defer_setup:
+                # The durable SETUP outbox and pending lease survive process loss.
+                # No plaintext secret is persisted; a lost finalizer means no replay
+                # and the existing stale-pending reconciler revokes the key.
+                return 201,payload
+            return 201,self.finish_issuance(payload,correlation)
         except Exception as exc:
-            import re
-            failure=type(exc).__name__
-            if isinstance(exc,(RuntimeError,TimeoutError)) and re.fullmatch(r'[A-Z_]{3,80}',str(exc)):
-                failure+=':'+str(exc)
-            # Only stable classes/codes, never raw SDK exception strings (may include sensitive payloads).
-            with self.db.tx() as c:
-                c.execute("UPDATE leases SET state='REVOKE_PENDING',revoke_intent=1,last_error=? WHERE id=?",(failure,lease_id))
-                self.db.audit(c,lease_id,'COMPENSATION_REQUIRED',correlation,failure)
-            try:
-                self.delete(lease_id,1)
-            except Exception:
-                pass  # Persisted REVOKE_PENDING remains discoverable without a retry limit.
+            self.compensate(lease_id,correlation,exc)
             raise Problem(503,'ISSUANCE_COMPENSATED',lease_id) from None
+
+    def compensate(self, lease_id, correlation, exc):
+        import re
+        failure=type(exc).__name__
+        if isinstance(exc,(RuntimeError,TimeoutError)) and re.fullmatch(r'[A-Z_]{3,80}',str(exc)):
+            failure+=':'+str(exc)
+        with self.db.tx() as c:
+            c.execute("UPDATE leases SET state='REVOKE_PENDING',revoke_intent=1,last_error=? WHERE id=? AND state!='REVOKED'",(failure,lease_id))
+            self.db.audit(c,lease_id,'COMPENSATION_REQUIRED',correlation,failure)
+        try:self.delete(lease_id,1)
+        except Exception:pass  # Durable pending state is retried by independent reconciliation.
+
+    def finish_issuance(self, payload, correlation):
+        lease_id=payload['lease_id']
+        if not self.setup(lease_id,1):raise RuntimeError('LEASE_NO_LONGER_PENDING')
+        row=self.db.lease(lease_id)
+        if row['state']!='SCHEDULE_PENDING' or row['expires_at']<=time.time():
+            raise RuntimeError('EXPIRED_DURING_SETUP')
+        complete={**payload,'status':'ACTIVE'}
+        until=min(time.time()+self.cfg.replay_seconds,row['expires_at'])
+        ref=self.cloud.store_response(complete,until)
+        accepted=False
+        try:
+            with self.db.tx() as c:
+                r=c.execute('SELECT * FROM leases WHERE id=?',(lease_id,)).fetchone()
+                if time.time()>=r['expires_at'] or r['state']!='SCHEDULE_PENDING' or not r['schedule_id']:
+                    raise RuntimeError('EXPIRED_DURING_SETUP')
+                c.execute("UPDATE leases SET replay_ref=?,replay_until=?,state='ACTIVE',delivered_at=COALESCE(delivered_at,?) WHERE id=?",(ref,until,time.time(),lease_id))
+                self.db.audit(c,lease_id,'ISSUANCE_FINALIZED' if r['delivered_at'] else 'DELIVERED',correlation)
+            accepted=True
+        finally:
+            if not accepted:self.cloud.remove_response(ref)
+        return complete
+
+    def finish_in_background(self, payload, correlation):
+        try:self.finish_issuance(payload,correlation)
+        except Exception as exc:self.compensate(payload['lease_id'],correlation,exc)
+        finally:payload.clear()
 
     def setup(self, lease_id, generation):
         self.cloud.fault('schedule')

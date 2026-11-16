@@ -9,7 +9,7 @@ import logging
 import re
 import time
 import uuid
-from fastapi import FastAPI, Request, Depends, Response
+from fastapi import FastAPI, Request, Depends, Response, BackgroundTasks
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.openapi.docs import get_swagger_ui_html
@@ -26,6 +26,7 @@ class CreateLease(BaseModel):
     scope_profile: str = Field(min_length=1,max_length=80)
     ttl_seconds: int = 900
     client_request_id: str | None = Field(default=None,max_length=120)
+    delivery_mode: Literal['confirmed','immediate'] = 'confirmed'
 
 class Probe(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -178,7 +179,7 @@ def create_app(lcm=None, worker=True):
                 'identity':{k:who[k] for k in ('issuer','subject','expires_at') if k in who}}
 
     @app.post('/v1/leases')
-    def create(body:CreateLease,request:Request,who=Depends(owner)):
+    def create(body:CreateLease,request:Request,background_tasks:BackgroundTasks,who=Depends(owner)):
         if e.cfg.mode=='oci' and not all(e.cfg.integration_gates.get(k) for k in ('iam_scope','vault_replay','database','scheduler')):
             raise Problem(503,'LIVE_CAPABILITY_GATES_PENDING')
         idem=request.headers.get('Idempotency-Key','')
@@ -192,8 +193,13 @@ def create_app(lcm=None, worker=True):
             raise Problem(403,'PROFILE_FORBIDDEN')
         # Use an operator-configured public URL, never arbitrary Host/X-Forwarded-Host.
         endpoint=('https://'+e.cfg.namespace+'.compat.objectstorage.'+e.cfg.region+'.oci.customer-oci.com') if e.cfg.mode=='oci' else (e.cfg.public_url or str(request.base_url).rstrip('/'))+'/mock-s3'
-        status,payload=e.create(who,body.model_dump(),idem,request.state.correlation,endpoint)
-        return JSONResponse(payload,status_code=status)
+        data=body.model_dump()
+        immediate=data['delivery_mode']=='immediate'
+        if not immediate:data.pop('delivery_mode')  # Preserve existing idempotency hashes.
+        status,payload=e.create(who,data,idem,request.state.correlation,endpoint,defer_setup=immediate)
+        if status==201 and immediate:
+            background_tasks.add_task(e.finish_in_background,dict(payload),request.state.correlation)
+        return JSONResponse(payload,status_code=status,background=background_tasks)
 
     def scoped_lease(lease_id,who):
         row=e.owned(str(lease_id),who)
