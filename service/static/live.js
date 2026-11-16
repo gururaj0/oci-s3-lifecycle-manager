@@ -4,7 +4,8 @@ let identity='',response=null,setup=null,leases=[],refreshing=false;
 const by=id=>document.getElementById(id);
 const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n};
 async function call(path,options={}){
- const r=await fetch(path,{...options,headers:{'Content-Type':'application/json',...(identity&&identity!=='session'?{Authorization:'Bearer '+identity}:{}),...(csrf?{'X-LCM-CSRF':csrf}:{}),...options.headers}});
+ const target=identity==='session'&&path.startsWith('/v1/')?'/connector'+path:path;
+ const r=await fetch(target,{...options,headers:{'Content-Type':'application/json',...(identity&&identity!=='session'?{Authorization:'Bearer '+identity}:{}),...(csrf?{'X-LCM-CSRF':csrf}:{}),...options.headers}});
  const text=await r.text(),data=text?JSON.parse(text):null;
  if(!r.ok)throw new Error(data?.error?.code||'DEPENDENCY_UNAVAILABLE');return data;
 }

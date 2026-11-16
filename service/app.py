@@ -45,7 +45,11 @@ class LiveTest(BaseModel):
 
 def create_app(lcm=None, worker=True):
     e = lcm or default_engine()
-    auth = Auth(e.cfg)
+    if e.cfg.auth_mode=='gateway':
+        from shared.gateway_auth import GatewayAuth
+        auth=GatewayAuth(e.cfg)
+    else:
+        auth=Auth(e.cfg)
 
     async def cleanup_loop():
         while True:
@@ -74,7 +78,7 @@ def create_app(lcm=None, worker=True):
     app.state.engine=e
     app.state.auth=auth
     connector=None
-    if e.cfg.mode=='oci' and e.cfg.oauth:
+    if e.cfg.mode=='oci' and e.cfg.oauth and e.cfg.auth_mode!='gateway':
         from service.connector_auth import ConnectorAuth
         connector=ConnectorAuth(e,auth)
         connector.install(app)
@@ -143,7 +147,9 @@ def create_app(lcm=None, worker=True):
     bearer=HTTPBearer(auto_error=False)
 
     def owner(request: Request, credentials=Depends(bearer)):
-        if request.headers.get('Authorization'):
+        if e.cfg.auth_mode=='gateway':
+            who=auth.verify_request(request)
+        elif request.headers.get('Authorization'):
             who=auth.verify(request.headers.get('Authorization'))
         elif connector:
             who=connector.owner(request)
@@ -167,7 +173,8 @@ def create_app(lcm=None, worker=True):
     def config(who=Depends(owner)):
         return {'mode':e.cfg.mode,'region':e.cfg.region,'ttl':{'default':900,'min':e.cfg.ttl_min,'max':e.cfg.ttl_max},
                 'profiles':{k:v for k,v in e.cfg.profiles.items() if k in auth.allowed(who)},
-                'expiry_mode':'managed_key_deletion','replay_seconds':e.cfg.replay_seconds}
+                'expiry_mode':'managed_key_deletion','replay_seconds':e.cfg.replay_seconds,
+                'identity':{k:who[k] for k in ('issuer','subject','expires_at') if k in who}}
 
     @app.post('/v1/leases')
     def create(body:CreateLease,request:Request,who=Depends(owner)):

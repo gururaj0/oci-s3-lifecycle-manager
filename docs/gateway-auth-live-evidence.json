@@ -1,0 +1,39 @@
+{
+  "checks": {
+    "gateway_rejects_missing_jwt_and_forged_identity": true,
+    "gateway_rejects_invalid_signature": true,
+    "verified_claims_reach_backend": true,
+    "gateway_overwrites_identity_and_scope_spoofing": true,
+    "backend_rejects_profile_escalation": true,
+    "ui_proxy_requires_session_and_fixed_destination": true,
+    "bastion_cannot_bypass_gateway_to_api_listener": true,
+    "backend_rejects_local_forgery_and_forwarded_for": true,
+    "real_lease_created_through_gateway": true,
+    "backend_checks_lease_profile": true,
+    "only_test_lease_revoked": true
+  },
+  "operations": {
+    "GET": {
+      "http_status": 200,
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "LIST": {
+      "http_status": 200,
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "PUT": {
+      "http_status": 200,
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "DELETE": {
+      "http_status": 403,
+      "observed_access": "DENY",
+      "matches_expectation": true
+    }
+  },
+  "production_ready": false,
+  "passed": false
+}

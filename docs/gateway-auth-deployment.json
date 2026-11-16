@@ -1,0 +1,26 @@
+{
+  "job_id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65ia22thyjd64hfnuh634zytfjkucevhjmkc7k5cfjqfgp6q",
+  "state": "SUCCEEDED",
+  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:0a5ca2556d98ad67aca0373594c7f19223e2f67efe71527c7bdb74765460f556",
+  "functions": {
+    "lcm-live-v2-delete": "sha256:0a5ca2556d98ad67aca0373594c7f19223e2f67efe71527c7bdb74765460f556",
+    "lcm-live-v2-reconcile": "sha256:0a5ca2556d98ad67aca0373594c7f19223e2f67efe71527c7bdb74765460f556",
+    "lcm-live-v2-sentinel": "sha256:0a5ca2556d98ad67aca0373594c7f19223e2f67efe71527c7bdb74765460f556",
+    "lcm-live-v2-setup": "sha256:0a5ca2556d98ad67aca0373594c7f19223e2f67efe71527c7bdb74765460f556"
+  },
+  "runtime": {
+    "auth_mode": "gateway",
+    "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:0a5ca2556d98ad67aca0373594c7f19223e2f67efe71527c7bdb74765460f556",
+    "separate_listeners": true,
+    "proxy_headers_disabled": true
+  },
+  "gateway_validates_jwt": true,
+  "backend_revalidates_service_jwt": false,
+  "identity_headers_overwritten": true,
+  "api_listener_gateway_nsg_only": true,
+  "temporary_build_permission_removed": true,
+  "unit_tests_passed": 70,
+  "production_ready": false,
+  "private_template_updated": true,
+  "release_archive_sha256": "1423b6288ec2739e0b7a577d9cea1f1866f0b12a72a83f0003bc1ae457400074"
+}

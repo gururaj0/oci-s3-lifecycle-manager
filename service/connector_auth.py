@@ -100,13 +100,30 @@ class ConnectorAuth:
                 if not secrets.compare_digest(claims['nonce'],state['nonce']):raise ValueError('nonce')
                 if claims['sub'] not in self.cfg['allowed_login_subjects']:raise Problem(403,'LOGIN_USER_NOT_ALLOWED')
                 if claims.get('azp',self.cfg['login_client_id'])!=self.cfg['login_client_id']:raise ValueError('azp')
-                service=self.exchange(self.cfg['connector_client_id'],creds['connector_client_secret'],{
-                    'grant_type':'client_credentials','scope':self.cfg['scope']})['access_token']
-                owner=self.auth.verify('Bearer '+service)
-                if not self.auth.allowed(owner):raise Problem(403,'CONNECTOR_NOT_ALLOWED')
-                # Signature and expiry were just verified by Auth; read expiry for session bounds.
-                service_claims=jwt.decode(service,options={'verify_signature':False})
-                expires=min(time.time()+600,service_claims['exp'],claims['exp'])
+                issued_at=time.time()
+                service_response=self.exchange(self.cfg['connector_client_id'],creds['connector_client_secret'],{
+                    'grant_type':'client_credentials','scope':self.cfg['scope']})
+                service=service_response['access_token']
+                if self.engine.cfg.auth_mode=='gateway':
+                    # The connector consumes the protected API as a real Unity client would.
+                    # JWT verification happens at the gateway, not in this UI process.
+                    try:
+                        verified=requests.get(self.cfg['public_url']+'/v1/config',
+                            headers={'Authorization':'Bearer '+service},timeout=(5,20),allow_redirects=False)
+                        if verified.status_code!=200:raise ValueError('gateway authentication')
+                        info=verified.json()
+                        if not info['profiles']:raise ValueError('connector authorization')
+                        owner=info['identity']
+                        lifetime=int(service_response.get('expires_in',0))
+                        if lifetime<=0:raise ValueError('token lifetime')
+                        expires=min(issued_at+min(600,lifetime),claims['exp'])
+                    except (requests.RequestException,ValueError,KeyError,TypeError):
+                        raise Problem(503,'GATEWAY_CONNECTOR_AUTH_FAILED') from None
+                else:
+                    owner=self.auth.verify('Bearer '+service)
+                    if not self.auth.allowed(owner):raise Problem(403,'CONNECTOR_NOT_ALLOWED')
+                    service_claims=jwt.decode(service,options={'verify_signature':False})
+                    expires=min(time.time()+600,service_claims['exp'],claims['exp'])
                 session_id=secrets.token_urlsafe(32)
                 with self.lock:
                     self.prune()

@@ -24,7 +24,8 @@ def apply():
 def save(enabled):
  v=json.loads(variables.read_text());assert not v.get('bootstrap_enabled')
  v['image_build_enabled']=enabled
- v['runtime_config_json']=(ROOT/'.local/identity-domain-config.json').read_text()
+ # Keep existing workers on the live schema until the new image is deployed.
+ v['runtime_config_json']=(ROOT/'.local/live-config.json').read_text()
  variables.write_text(json.dumps(v,indent=2))
 def ssh(code,data=None):
  return subprocess.run(['ssh','-F','.local/ssh-config','lcm-live',code],input=data,cwd=ROOT,check=True,capture_output=True)

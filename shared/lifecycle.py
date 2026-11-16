@@ -39,7 +39,7 @@ class Lifecycle:
                     (not overdue or now-overdue <= self.cfg.overdue_threshold) and paused[0] == '0' and (not dependency or dependency[0]=='0'))
 
     def rate(self, owner):
-        key = hashlib.sha256(json.dumps(owner, sort_keys=True).encode()).hexdigest()
+        key = hashlib.sha256(json.dumps({k:owner[k] for k in ('issuer','subject')}, sort_keys=True).encode()).hexdigest()
         minute = int(time.time() // 60)
         with self.db.tx() as c:
             c.execute('DELETE FROM rate_buckets WHERE minute<?', (minute-1,))

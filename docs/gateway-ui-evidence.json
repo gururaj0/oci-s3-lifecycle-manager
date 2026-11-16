@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "signin_ui_and_mobile_layout": true,
+    "real_identity_domain_redirect": true,
+    "no_browser_errors": true,
+    "public_api_reference_preserved": true,
+    "secure_login_cookie": true,
+    "invalid_callback_rejected": true,
+    "live_readiness": true
+  },
+  "passed": true,
+  "interactive_sign_in": "pending user confirmation after gateway split"
+}

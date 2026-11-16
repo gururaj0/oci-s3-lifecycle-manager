@@ -18,7 +18,8 @@ The UI simulates the Unity connector: the backend obtains an Identity Domains cl
 JWT and keeps OAuth secrets in Vault. The browser receives an HttpOnly session cookie.
 For direct API testing, `python scripts/identity_demo_token.py` obtains a service token through
 DemoBastion; treat its stdout as a secret. The old demo-signed JWT is no longer accepted.
-See [Identity Domains authentication](docs/identity-domain-auth.md).
+See [Identity Domains authentication](docs/identity-domain-auth.md) and
+[gateway JWT validation / backend authorization](docs/gateway-auth.md).
 
 The timed expiry acceptance test failed: signed S3 reads still succeeded 237.995 seconds after
 the deadline despite Function revocation and confirmed IAM key absence. Issuance samples also

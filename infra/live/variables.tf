@@ -25,3 +25,8 @@ variable "function_image_digest" {
   type    = string
   default = ""
 }
+
+variable "gateway_jwt_enabled" {
+  type    = bool
+  default = true
+}

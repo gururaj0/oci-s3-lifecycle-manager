@@ -9,6 +9,12 @@ variables=json.loads((ROOT/'.local/live-variables.json').read_text())
 assert not variables.get('image_build_enabled') and not variables.get('bootstrap_enabled')
 manifest=json.loads((ROOT/'release/live-image-manifest.json').read_text())
 cfg=json.loads((ROOT/'.local/identity-domain-config.json').read_text())
+# Keep listener/authentication mode aligned with the gateway rollout setting.
+split=variables.get('gateway_jwt_enabled',True)
+cfg['auth_mode']='gateway' if split else 'jwt'
+state=json.loads((ROOT/'.local/live.tfstate').read_text())
+subnet=next(r['instances'][0]['attributes']['cidr_block'] for r in state['resources'] if r['type']=='oci_core_subnet' and r['name']=='public')
+cfg['gateway_trusted_networks']=[subnet] if split else []
 assert cfg['oauth']['secret_id'] and cfg['profile_scopes']=={'sales-read':'sales-read','sales-write':'sales-write'}
 remote('sudo tee /etc/lcm-live/identity-config-staged.json >/dev/null',json.dumps(cfg).encode())
 code='''import json,subprocess,os,base64

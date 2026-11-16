@@ -9,7 +9,7 @@ variableGroups:
   - title: Existing DemoBastion network
     variables: [vcn_id, public_subnet_id, private_subnet_id, bastion_private_ip, ssh_public_key, image_id]
   - title: JWT trust and release
-    variables: [runtime_config_json, function_image, function_image_digest, bootstrap_enabled]
+    variables: [runtime_config_json, function_image, function_image_digest, gateway_jwt_enabled, bootstrap_enabled]
 variables:
   tenancy_ocid:
     type: oci:identity:tenancy:id
@@ -28,7 +28,11 @@ variables:
     type: string
     required: true
     multiline: true
-    title: Approved issuer, audience, HTTPS JWKS and immutable subject mappings (no secrets)
+    title: Approved JWT trust, subject mappings and UI OAuth/Vault references (no secret values)
+  gateway_jwt_enabled:
+    type: boolean
+    default: true
+    title: Validate service JWTs at API Gateway (requires split UI/API image and OAuth configuration)
   bootstrap_enabled:
     type: boolean
     default: true

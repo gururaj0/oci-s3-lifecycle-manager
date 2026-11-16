@@ -6,6 +6,8 @@ import os
 @dataclass
 class Config:
     mode: str = 'mock'
+    auth_mode: str = 'jwt'
+    gateway_trusted_networks: list = field(default_factory=list)
     state_dir: Path = field(default_factory=lambda: Path(os.getenv('LCM_STATE_DIR', '.local')))
     region: str = 'us-ashburn-1'
     deployment_id: str = 'lcm-demo-v1'
@@ -64,6 +66,10 @@ class Config:
             raise ValueError('The live demo redirect requires HTTPS')
         if cfg.mode not in ('mock', 'oci'):
             raise ValueError('LCM_MODE must be mock or oci')
+        if cfg.auth_mode not in ('jwt','gateway'):
+            raise ValueError('Unknown authentication mode')
+        if cfg.auth_mode=='gateway' and (cfg.mode!='oci' or not cfg.gateway_trusted_networks):
+            raise ValueError('Gateway trust requires OCI mode and explicit trusted networks')
         cfg.workload=os.getenv('LCM_WORKLOAD',cfg.workload)
         if os.getenv('LCM_FUNCTIONS'):cfg.functions=json.loads(os.environ['LCM_FUNCTIONS'])
         if cfg.mode == 'oci':

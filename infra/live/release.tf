@@ -1,14 +1,16 @@
 locals {
   supplied_config = jsondecode(var.runtime_config_json == "" ? "{}" : var.runtime_config_json)
   runtime_config = merge(local.supplied_config, {
-    mode                  = "oci", region = var.region, deployment_id = var.prefix,
-    compartment_id        = var.compartment_ocid, scheduler_compartment_id = var.compartment_ocid,
-    secret_compartment_id = var.compartment_ocid, tenancy_id = var.tenancy_ocid,
-    namespace             = var.namespace, db_user = "LCM", db_secret_id = oci_vault_secret.application.id,
-    database_url          = [for p in oci_database_autonomous_database.ledger.connection_strings[0].profiles : p.value if p.tls_authentication == "SERVER" && p.consumer_group == "LOW"][0],
-    vault_id              = oci_kms_vault.lcm.id, vault_key_id = oci_kms_key.lcm.id,
-    resource_tags         = { LcmLeaseV2 = { deployment = var.prefix } },
-    service_users         = { for profile in ["sales-read", "sales-write"] : profile => [for k, u in oci_identity_user.pool : u.id if local.users[k] == profile] },
+    mode                     = "oci", region = var.region, deployment_id = var.prefix,
+    auth_mode                = var.gateway_jwt_enabled ? "gateway" : "jwt",
+    gateway_trusted_networks = var.gateway_jwt_enabled ? [oci_core_subnet.public.cidr_block] : [],
+    compartment_id           = var.compartment_ocid, scheduler_compartment_id = var.compartment_ocid,
+    secret_compartment_id    = var.compartment_ocid, tenancy_id = var.tenancy_ocid,
+    namespace                = var.namespace, db_user = "LCM", db_secret_id = oci_vault_secret.application.id,
+    database_url             = [for p in oci_database_autonomous_database.ledger.connection_strings[0].profiles : p.value if p.tls_authentication == "SERVER" && p.consumer_group == "LOW"][0],
+    vault_id                 = oci_kms_vault.lcm.id, vault_key_id = oci_kms_key.lcm.id,
+    resource_tags            = { LcmLeaseV2 = { deployment = var.prefix } },
+    service_users            = { for profile in ["sales-read", "sales-write"] : profile => [for k, u in oci_identity_user.pool : u.id if local.users[k] == profile] },
     profiles = { for profile in ["sales-read", "sales-write"] : profile => {
       bucket  = oci_objectstorage_bucket.sales.name, operations = profile == "sales-read" ? ["LIST", "GET"] : ["LIST", "GET", "PUT"],
       version = 1, group_id = oci_identity_group.scope[profile].id

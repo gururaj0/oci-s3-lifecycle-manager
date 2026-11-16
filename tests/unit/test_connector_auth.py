@@ -40,7 +40,7 @@ def login(connector,subject='operator',bad_nonce=False):
   if cid=='browser':
    assert data['code_verifier'] and data['redirect_uri']=='https://demo.test/auth/callback'
    return {'id_token':signed(auth,subject,'browser',nonce='bad' if bad_nonce else nonce)}
-  return {'access_token':signed(auth,'connector','api',scope='sales-read sales-write')}
+  return {'access_token':signed(auth,'connector','api',scope='sales-read sales-write'),'expires_in':600}
  value.exchange=exchange
  r=client.get('/auth/callback',params={'state':query['state'][0],'code':'private-code'})
  return r,query,calls
@@ -105,3 +105,21 @@ def test_access_token_trust_failures(connector,failure):
         token='.'.join((head,body,('A' if signature[0]!='A' else 'B')+signature[1:]))
     with pytest.raises(Problem) as error:auth.verify('Bearer '+token)
     assert error.value.status==401
+
+
+def test_split_ui_checks_service_identity_through_gateway_only(connector,monkeypatch):
+    value,auth,client=connector
+    value.engine.cfg.auth_mode='gateway'
+    monkeypatch.setattr(auth,'verify',lambda *a:pytest.fail('UI must not validate service JWT'))
+    seen=[]
+    def gateway(url,**kwargs):
+        seen.append((url,kwargs))
+        return SimpleNamespace(status_code=200,json=lambda:{'profiles':{'sales-read':{}},
+            'identity':{'issuer':auth.cfg.issuer,'subject':'connector','expires_at':int(time.time())+600}})
+    monkeypatch.setattr('service.connector_auth.requests.get',gateway)
+    r,query,calls=login(connector)
+    assert r.headers['location']=='/'
+    assert seen[0][0]=='https://demo.test/v1/config'
+    assert seen[0][1]['headers']['Authorization'].startswith('Bearer ')
+    assert seen[0][1]['allow_redirects'] is False
+    assert client.get('/auth/session').json()['authenticated']

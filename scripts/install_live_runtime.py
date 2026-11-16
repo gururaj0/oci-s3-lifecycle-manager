@@ -8,6 +8,9 @@ import subprocess
 root=Path('/opt/lcm-live')
 manifest=json.loads((root/'source/function-build-manifest.json').read_text())
 image=manifest['image']
+cfg=json.loads(Path('/etc/lcm-live/config.json').read_text())
+split=cfg.get('auth_mode')=='gateway'
+api_port='8081' if split else '8080'
 assert image.startswith('iad.ocir.io/') and '@sha256:' in image
 pull=Path('/opt/lcm-live/pull_image.py')
 pull.write_text('''import json,os,subprocess,tempfile
@@ -25,7 +28,7 @@ with tempfile.TemporaryDirectory(prefix='lcm-pull-',dir='/run') as d:
 ''')
 (root/'image.json').write_text(json.dumps({'image':image}))
 subprocess.run(['/opt/lcm-live/venv/bin/python',str(pull)],check=True)
-subprocess.run(['systemctl','stop','lcm-cleanup.timer','lcm-api.service','lcm-cleanup.service'],capture_output=True)
+subprocess.run(['systemctl','stop','lcm-cleanup.timer','lcm-api.service','lcm-ui.service','lcm-cleanup.service'],capture_output=True)
 # Migrate the initial unnamed containers. Match only this deployment's image and
 # API/worker command; never stop unrelated containers on a shared host.
 repository=image.split('@')[0]
@@ -57,12 +60,16 @@ ExecStart=/opt/lcm-live/venv/bin/python /opt/lcm-live/pull_image.py
 ''')
 Path('/etc/systemd/system/lcm-api.service').write_text(common.replace('[Service]', 'Requires=lcm-image.service\nAfter=lcm-image.service\n[Service]')+'''Restart=on-failure
 RestartSec=5
-ExecStart='''+command(base[:-1]+['--name=lcm-api',image,'-m','uvicorn','service.main:app','--host','0.0.0.0','--port','8080','--no-access-log'])+'''
+ExecStart='''+command(base[:-1]+['--name=lcm-api',image,'-m','uvicorn','service.main:app','--host','0.0.0.0','--port',api_port,'--no-access-log','--no-proxy-headers'])+'''
 ExecStop=/usr/bin/podman stop --ignore --time=120 lcm-api
 ExecStopPost=/usr/bin/podman rm --force --ignore lcm-api
 [Install]
 WantedBy=multi-user.target
 ''')
+if split:
+    unit=Path('/etc/systemd/system/lcm-api.service').read_text()
+    unit=unit.replace('--name=lcm-api','--name=lcm-ui').replace('service.main:app','service.ui_main:app').replace('"8081"','"8080"').replace(' lcm-api',' lcm-ui')
+    Path('/etc/systemd/system/lcm-ui.service').write_text(unit)
 Path('/etc/systemd/system/lcm-cleanup.service').write_text(common+'Type=oneshot\nExecStart='+command(base[:-1]+['--name=lcm-cleanup',image,'-m','scripts.worker'])+'\nExecStop=/usr/bin/podman stop --ignore --time=120 lcm-cleanup\nExecStopPost=/usr/bin/podman rm --force --ignore lcm-cleanup\n')
 Path('/etc/systemd/system/lcm-cleanup.timer').write_text('''[Unit]
 Description=LCM independent credential cleanup
@@ -79,6 +86,12 @@ if subprocess.run(['systemctl','is-active','--quiet','firewalld']).returncode==0
     # OCI NSGs constrain this private listener to the gateway NSG.
     subprocess.run(['firewall-cmd','--permanent','--add-port=8080/tcp'],check=True,stdout=subprocess.DEVNULL)
     subprocess.run(['firewall-cmd','--add-port=8080/tcp'],check=True,stdout=subprocess.DEVNULL)
+if split:
+    if subprocess.run(['systemctl','is-active','--quiet','firewalld']).returncode==0:
+        subprocess.run(['firewall-cmd','--permanent','--add-port=8081/tcp'],check=True,stdout=subprocess.DEVNULL)
+        subprocess.run(['firewall-cmd','--add-port=8081/tcp'],check=True,stdout=subprocess.DEVNULL)
+    subprocess.run(['systemctl','enable','lcm-ui.service'],check=True)
+    subprocess.run(['systemctl','restart','lcm-ui.service'],check=True)
 subprocess.run(['systemctl','enable','lcm-api.service','lcm-cleanup.timer'],check=True)
 subprocess.run(['systemctl','restart','lcm-api.service'],check=True)
 subprocess.run(['systemctl','start','lcm-cleanup.timer'],check=True)

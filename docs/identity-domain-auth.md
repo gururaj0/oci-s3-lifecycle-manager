@@ -14,9 +14,11 @@ an outstanding acceptance gate.
 3. The backend reads the two confidential client secrets from the existing Demo Vault
    using its instance principal. The login client exchanges the authorization code;
    the separate connector client requests a client-credentials access token.
-4. The Lifecycle API validates the connector JWT against this domain's public signing
-   keys and the dedicated Lifecycle API audience. The connector subject and token scopes
-   must both permit the requested profile.
+4. The UI sends the connector JWT through the protected API Gateway `/v1/*` route.
+   The gateway validates it against this domain's public signing keys, the dedicated API
+   audience and required scopes, then overwrites identity headers. The private Lifecycle
+   API checks the gateway transport peer, approved bucket profiles and lease ownership.
+   It does not verify the service JWT again. See [gateway authentication](gateway-auth.md).
 5. The browser receives a random Secure, HttpOnly, SameSite=Lax session cookie. Service
    JWTs and client secrets remain on the backend. Cookie-authenticated mutations also
    require the configured Origin and a session-specific CSRF header.
@@ -47,7 +49,7 @@ remains separate from token signing. The previous demo signing key is no longer 
 ## Session behavior
 
 Sessions last at most ten minutes and never outlive the service JWT or ID token. Sign in
-again after expiry. Sessions are held in the single API process's memory, so restarting
+again after expiry. Sessions are held in the single UI process's memory, so restarting
 or deploying the API requires sign-in again. This is a demo implementation; multiple API
 replicas would require a shared, protected session store.
 
