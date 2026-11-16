@@ -1,6 +1,6 @@
 'use strict';
 let csrf='',sessionExpires=0;
-let identity='',response=null,setup=null,leases=[],refreshing=false;
+let identity='',response=null,setup=null,leases=[],refreshing=false,issuanceVersion=0;
 const by=id=>document.getElementById(id);
 const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n};
 async function call(path,options={}){
@@ -42,10 +42,38 @@ async function refresh(){
 }
 async function connectIdentity(){try{const config=await call('/v1/config');if(config.mode!=='oci')throw new Error('LIVE_OCI_REQUIRED');by('live-profile').replaceChildren();Object.keys(config.profiles).forEach(p=>{const option=node('option',p);option.value=p;by('live-profile').append(option)});await inventory();by('live-create').disabled=false;by('live-status').textContent='Verified identity connected. '+Object.keys(config.profiles).length+' approved profiles.';await refresh();by('auto-bucket').replaceChildren();[...new Set(Object.values(config.profiles).map(p=>p.bucket))].forEach(bucket=>{const option=node('option',bucket);option.value=bucket;by('auto-bucket').append(option)});by('auto-run').disabled=false;by('auto-operation').value='LIST';await automaticAccess()}catch(e){identity='';by('live-create').disabled=true;by('live-status').textContent=e.message}}
 by('connect').onsubmit=async e=>{e.preventDefault();identity=by('bearer').value;by('bearer').value='';await connectIdentity()};
-by('live-issue').onsubmit=async e=>{e.preventDefault();by('live-create').disabled=true;by('live-status').textContent='Creating real OCI credentials and confirming cleanup…';try{response=await call('/v1/leases',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({scope_profile:by('live-profile').value,ttl_seconds:Number(by('live-ttl').value)})});by('live-access').textContent=response.access_key_id;by('live-secret').value=response.secret_access_key;by('live-secret').type='password';by('live-endpoint').textContent=response.endpoint;by('live-response').textContent=JSON.stringify({lease_id:response.lease_id,scope_profile:response.scope_profile,expires_at:response.expires_at,expiry_mode:response.expiry_mode},null,2);by('live-probe-result').textContent='Run before and after revocation. New keys may take several minutes to reach S3.';by('live-result-panel').hidden=false;by('live-status').textContent='Real OCI credentials created. Your OCI service user and key inventory appear below.';await refresh();await inventory()}catch(e){by('live-status').textContent=e.message}finally{by('live-create').disabled=!identity}};
+by('live-issue').onsubmit=async e=>{
+ e.preventDefault();by('live-clear').click();const version=++issuanceVersion;
+ const requestId=crypto.randomUUID(),started=Date.now();let pending=true,polling=false;
+ const phases={PREPARING:'Reserving a service user and creating credentials…',CONFIRMING_SCHEDULE:'Credentials created. Confirming expiration cleanup…',PREPARING_REPLAY:'Cleanup scheduled. Preparing secure retry storage…',ACTIVE:'Credentials ready. Receiving the response…',REVOKE_PENDING:'Issuance did not complete. Cleanup is in progress.',REVOKED:'This request was revoked. No credentials will be displayed.'};
+ by('live-create').disabled=true;by('live-result-panel').hidden=false;by('live-credential-body').hidden=true;
+ by('live-issuance-progress').textContent='Submitting your credential request…';by('live-issuance-time').textContent='0 seconds elapsed';
+ by('live-status').textContent='Issuing credentials. Progress is shown above Your leases.';
+ by('live-result-panel').scrollIntoView({block:'start'});
+ const timer=setInterval(()=>{if(pending&&version===issuanceVersion)by('live-issuance-time').textContent=Math.floor((Date.now()-started)/1000)+' seconds elapsed';},1000);
+ const poll=setInterval(async()=>{
+  if(!pending||polling||version!==issuanceVersion)return;polling=true;
+  try{const progress=await call('/v1/lease-requests/'+requestId);if(pending&&version===issuanceVersion)by('live-issuance-progress').textContent=phases[progress.phase]||'Processing credential request…';}
+  catch(error){/* The request may not be reserved yet; never infer success from polling failure. */}
+  finally{polling=false}
+ },2000);
+ try{
+  const issued=await call('/v1/leases',{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({scope_profile:by('live-profile').value,ttl_seconds:Number(by('live-ttl').value)})});
+  if(version!==issuanceVersion||!identity)return;
+  pending=false;response=issued;
+  by('live-access').textContent=response.access_key_id;by('live-secret').value=response.secret_access_key;by('live-secret').type='password';
+  by('live-endpoint').textContent=response.endpoint;by('live-response').textContent=JSON.stringify({lease_id:response.lease_id,scope_profile:response.scope_profile,expires_at:response.expires_at,expiry_mode:response.expiry_mode},null,2);
+  by('live-probe-result').textContent='Run before and after revocation. New keys may take several minutes to reach S3.';
+  by('live-issuance-progress').textContent='Credentials ready. Expiration cleanup is scheduled.';
+  by('live-issuance-time').textContent='Ready in '+Math.floor((Date.now()-started)/1000)+' seconds';by('live-credential-body').hidden=false;
+  by('live-status').textContent='Real OCI credentials are ready above Your leases.';await refresh();await inventory();
+ }catch(error){
+  if(version===issuanceVersion){by('live-status').textContent=error.message;by('live-issuance-progress').textContent='Request did not complete: '+error.message+'. Check Your leases before requesting another lease.';by('live-issuance-time').textContent=Math.floor((Date.now()-started)/1000)+' seconds elapsed';}
+ }finally{pending=false;clearInterval(timer);clearInterval(poll);by('live-create').disabled=!identity}
+};
 by('live-probe').onclick=async()=>{if(!response)return;by('live-probe').disabled=true;by('live-probe-result').textContent='Running actual OCI S3 diagnostic…';try{const result=await call('/v1/leases/'+response.lease_id+'/tests',{method:'POST',body:JSON.stringify({access_key_id:response.access_key_id,secret_access_key:response.secret_access_key,operation:by('live-probe-op').value})});by('live-probe-result').textContent=JSON.stringify(result,null,2);await refresh()}catch(e){by('live-probe-result').textContent=e.message}finally{by('live-probe').disabled=false}};
 by('live-show').onclick=()=>by('live-secret').type=by('live-secret').type==='password'?'text':'password';
-by('live-clear').onclick=()=>{response=null;by('live-secret').value='';by('live-access').textContent='';by('live-endpoint').textContent='';by('live-response').textContent='';by('live-probe-result').textContent='';by('live-result-panel').hidden=true};
+by('live-clear').onclick=()=>{issuanceVersion++;response=null;by('live-credential-body').hidden=true;by('live-issuance-progress').textContent='';by('live-issuance-time').textContent='';by('live-secret').value='';by('live-access').textContent='';by('live-endpoint').textContent='';by('live-response').textContent='';by('live-probe-result').textContent='';by('live-result-panel').hidden=true};
 by('live-profile').onchange=profile;by('live-refresh').onclick=async()=>{try{await refresh();await inventory()}catch(e){by('live-status').textContent=e.message}};by('live-setup-refresh').onclick=async()=>{try{await inventory()}catch(e){by('live-status').textContent=e.message}};
 setInterval(refresh,5000);setInterval(()=>{if(identity)renderLeases()},1000);
 fetch('/health/ready').then(r=>r.json()).then(data=>by('live-health').textContent=data.status+' · '+data.mode).catch(()=>by('live-health').textContent='Unavailable');

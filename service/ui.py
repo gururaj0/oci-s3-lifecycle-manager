@@ -12,7 +12,7 @@ from shared.runtime import engine
 # query string or forwarded identity headers.
 LEASE=r'[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}'
 ROUTES={
- 'GET':re.compile(r'v1/(?:config|leases|metrics|audit|test-setup|leases/'+LEASE+r')\Z'),
+ 'GET':re.compile(r'v1/(?:config|leases|metrics|audit|test-setup|leases/'+LEASE+r'|lease-requests/'+LEASE+r')\Z'),
  'POST':re.compile(r'v1/(?:bucket-operations|leases|leases/'+LEASE+r'/tests)\Z'),
  'DELETE':re.compile(r'v1/leases/'+LEASE+r'\Z')}
 

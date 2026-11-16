@@ -39,7 +39,7 @@ def install_reference(app, cfg):
         for path, item in spec['paths'].items():
             for method, op in item.items():
                 if method not in ('get','post','delete'):continue
-                op['tags']=['Automated bucket access' if path=='/v1/bucket-operations' else 'Lease lifecycle' if path.startswith('/v1/leases') and not path.endswith('/tests') else 'Discovery' if path=='/v1/config' else 'Demo diagnostics' if path.startswith('/v1/') else 'Health']
+                op['tags']=['Automated bucket access' if path=='/v1/bucket-operations' else 'Lease lifecycle' if path.startswith(('/v1/leases','/v1/lease-requests')) and not path.endswith('/tests') else 'Discovery' if path=='/v1/config' else 'Demo diagnostics' if path.startswith('/v1/') else 'Health']
                 op['responses'].pop('422',None)
                 if path.startswith('/v1/'):
                     for code,desc in [('400','Invalid input or idempotency key'),('403','Identity, scope, profile or ownership not authorized'),('404','Resource not found'),('409','Idempotency conflict, issuance pending or credentials no longer replayable'),('429','Rate limit or pool exhausted; honor Retry-After'),('503','Dependency, cleanup health or issuance failure')]:
@@ -57,6 +57,15 @@ def install_reference(app, cfg):
                 'next_start':{'type':['string','null']},'objects':{'type':'array','items':{'type':'object','properties':{'key':{'type':'string'},'size':{'type':'integer'},'etag':{'type':['string','null']}}}}}}}}}
             operation['responses']['412']=response('ApiError','Object exists or ETag no longer matches; inspect before retrying PUT')
             operation['responses']['413']=response('ApiError','Request or object exceeds size limit')
+        schemas['LeaseProgress']={'type':'object','required':['request_id','phase','lease'],'properties':{
+            'request_id':{'type':'string','format':'uuid'},
+            'phase':{'type':'string','enum':['PREPARING','CONFIRMING_SCHEDULE','PREPARING_REPLAY','ACTIVE','REVOKE_PENDING','REVOKED']},
+            'lease':{'$ref':'#/components/schemas/LeaseMetadata'}}}
+        progress=spec['paths']['/v1/lease-requests/{request_id}']['get']
+        progress['parameters'][0]['schema']['format']='uuid'
+        progress['summary']='Read issuance progress without exposing credentials'
+        progress['description']='Use the UUID Idempotency-Key of the create request. Owner and profile authorization apply. A 404 can mean reservation has not committed yet. Only the create response returns credentials; ACTIVE progress does not include the secret.'
+        progress['responses']['200']=response('LeaseProgress','Current committed issuance stage and safe lease metadata')
         post=spec['paths']['/v1/leases']['post']
         post['responses']['422']=response('ApiError','Unsupported profile')
         post['summary']='Create a lease or replay the same request'

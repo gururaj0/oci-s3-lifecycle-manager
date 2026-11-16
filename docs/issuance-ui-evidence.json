@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "synthetic_responses": true,
+  "panel_visible_before_create_response": true,
+  "panel_above_lease_table": true,
+  "committed_progress_stages_render": true,
+  "elapsed_time_shown": true,
+  "no_secret_before_success": true,
+  "secret_masked_on_success": true,
+  "dismissed_request_cannot_redisplay_secret": true,
+  "desktop_mobile_layout": true,
+  "script_errors": []
+}

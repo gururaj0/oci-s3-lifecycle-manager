@@ -1,0 +1,24 @@
+{
+  "checks": {
+    "live_issuance_succeeded": true,
+    "progress_never_exposes_credentials": true,
+    "pending_stage_observed": true,
+    "ready_stage_confirmed": true,
+    "anonymous_progress_rejected": true,
+    "only_test_lease_revoked": true
+  },
+  "observed_stages": [
+    {
+      "phase": "CONFIRMING_SCHEDULE",
+      "elapsed_seconds": 2.41
+    },
+    {
+      "phase": "PREPARING_REPLAY",
+      "elapsed_seconds": 23.45
+    }
+  ],
+  "observed_request_seconds": 62.8,
+  "passed": true,
+  "production_ready": false,
+  "observed_issuance_seconds": 42.28
+}

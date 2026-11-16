@@ -565,6 +565,108 @@
         ]
       }
     },
+    "/v1/lease-requests/{request_id}": {
+      "get": {
+        "summary": "Read issuance progress without exposing credentials",
+        "operationId": "lease_request_progress_v1_lease_requests__request_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current committed issuance stage and safe lease metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseProgress"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
+          }
+        },
+        "tags": [
+          "Lease lifecycle"
+        ],
+        "description": "Use the UUID Idempotency-Key of the create request. Owner and profile authorization apply. A 404 can mean reservation has not committed yet. Only the create response returns credentials; ACTIVE progress does not include the secret."
+      }
+    },
     "/v1/leases/{lease_id}": {
       "get": {
         "summary": "Get",
@@ -1571,6 +1673,34 @@
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "LeaseProgress": {
+        "type": "object",
+        "required": [
+          "request_id",
+          "phase",
+          "lease"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "PREPARING",
+              "CONFIRMING_SCHEDULE",
+              "PREPARING_REPLAY",
+              "ACTIVE",
+              "REVOKE_PENDING",
+              "REVOKED"
+            ]
+          },
+          "lease": {
+            "$ref": "#/components/schemas/LeaseMetadata"
           }
         }
       }
