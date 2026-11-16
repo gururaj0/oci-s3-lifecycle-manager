@@ -1,0 +1,12 @@
+{
+  "workload": "instance-principal",
+  "checks": {
+    "bootstrap_admin_secret_denied": true,
+    "database_secret_modification_denied": true,
+    "foreign_user_keys_denied": true,
+    "general_user_update_denied": true,
+    "group_modification_denied": true,
+    "explicit_system_privileges_only_create_session": true,
+    "all_pool_capabilities_and_memberships_match": true
+  }
+}

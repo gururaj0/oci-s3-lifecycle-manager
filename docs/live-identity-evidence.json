@@ -1,0 +1,75 @@
+{
+  "service_users": {
+    "sales-read-1": {
+      "user_id": "ocid1.user.oc1..aaaaaaaabk7bnd5zif5calvwkjnxm6tswtub5ytuhrint476spvlyptgur5q",
+      "groups_match": true,
+      "unrelated_credentials_absent": true,
+      "capabilities": {
+        "can_use_console_password": false,
+        "can_use_api_keys": false,
+        "can_use_auth_tokens": false,
+        "can_use_smtp_credentials": false,
+        "can_use_db_credentials": false,
+        "can_use_customer_secret_keys": true,
+        "can_use_o_auth2_client_credentials": false
+      }
+    },
+    "sales-read-2": {
+      "user_id": "ocid1.user.oc1..aaaaaaaaishn52kon6nme45iqe5n5tbmvsfyyblx6wwergmiv4rbxho5gfia",
+      "groups_match": true,
+      "unrelated_credentials_absent": true,
+      "capabilities": {
+        "can_use_console_password": false,
+        "can_use_api_keys": false,
+        "can_use_auth_tokens": false,
+        "can_use_smtp_credentials": false,
+        "can_use_db_credentials": false,
+        "can_use_customer_secret_keys": true,
+        "can_use_o_auth2_client_credentials": false
+      }
+    },
+    "sales-write-1": {
+      "user_id": "ocid1.user.oc1..aaaaaaaaz4saxjse7dgzp2nazytoei6eicdgixevei3cyahpj2bcmqz4674q",
+      "groups_match": true,
+      "unrelated_credentials_absent": true,
+      "capabilities": {
+        "can_use_console_password": false,
+        "can_use_api_keys": false,
+        "can_use_auth_tokens": false,
+        "can_use_smtp_credentials": false,
+        "can_use_db_credentials": false,
+        "can_use_customer_secret_keys": true,
+        "can_use_o_auth2_client_credentials": false
+      }
+    },
+    "sales-write-2": {
+      "user_id": "ocid1.user.oc1..aaaaaaaann2jze3tdcz7fmpyomrx7kqe36rezbsj24isfyo776xp2lwhrdvq",
+      "groups_match": true,
+      "unrelated_credentials_absent": true,
+      "capabilities": {
+        "can_use_console_password": false,
+        "can_use_api_keys": false,
+        "can_use_auth_tokens": false,
+        "can_use_smtp_credentials": false,
+        "can_use_db_credentials": false,
+        "can_use_customer_secret_keys": true,
+        "can_use_o_auth2_client_credentials": false
+      }
+    },
+    "sentinel": {
+      "user_id": "ocid1.user.oc1..aaaaaaaagul22ulu6whxy7kcqrt5cm4t32fgkpxtfn4lm7kwllzeqlnmxweq",
+      "groups_match": true,
+      "unrelated_credentials_absent": true,
+      "capabilities": {
+        "can_use_console_password": false,
+        "can_use_api_keys": false,
+        "can_use_auth_tokens": false,
+        "can_use_smtp_credentials": false,
+        "can_use_db_credentials": false,
+        "can_use_customer_secret_keys": true,
+        "can_use_o_auth2_client_credentials": false
+      }
+    }
+  },
+  "scope": "dedicated LCM population only"
+}

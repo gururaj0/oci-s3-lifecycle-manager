@@ -1,0 +1,39 @@
+{
+  "mode": "live-oci",
+  "credentials_logged": false,
+  "checks": {
+    "jwt_rejections": true,
+    "replay_same_credentials": true,
+    "idempotency_conflict": true,
+    "status_redacted": true,
+    "owner_bound": true,
+    "native_s3_before_expiry": true,
+    "s3_denied_after_confirmed_deletion": true,
+    "durable_revocation_after_api_restart": true
+  },
+  "requests": [
+    {
+      "seconds": 51.781,
+      "status": 201
+    }
+  ],
+  "cleanup_mode": "VM cleanup; initial scheduler-only isolation was invalid because an unnamed Podman container remained running",
+  "lifecycle": {
+    "lease_id": "a6bb5aa0-a7b9-410c-ba5e-e818f0780b2e",
+    "deadline": "2026-11-12T16:36:07.341000Z",
+    "first_success_at": 1794501239.12495,
+    "observed_denial_at": 1794501367.6189609,
+    "delay_beyond_deadline_seconds": 0.27796077728271484
+  },
+  "issuance": {
+    "samples": 1,
+    "p95_seconds": null,
+    "target_seconds": 15,
+    "acceptance_measured": false
+  },
+  "passed": false,
+  "deletion_actor": "instance",
+  "scheduler_only_proven": false,
+  "expiry_acceptance_measured": false,
+  "limitation": "Historical probe accepted one S3 denial without repeated confirmation; it does not establish timed data-plane revocation. Use the instrumented Function-only observations instead."
+}

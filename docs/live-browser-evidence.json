@@ -1,0 +1,10 @@
+{
+  "mode": "live-oci",
+  "jwt_connection": true,
+  "token_input_cleared": true,
+  "credential_panel_hidden": true,
+  "desktop": true,
+  "mobile_390px_no_overflow": true,
+  "script_errors": [],
+  "customer_keys_created": false
+}

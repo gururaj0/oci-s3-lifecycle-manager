@@ -1,0 +1,32 @@
+{
+  "observed_at": "2026-11-13T21:47:49.855632+00:00",
+  "legacy_ui": {
+    "http": 307,
+    "location": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/"
+  },
+  "legacy_docs": {
+    "http": 307,
+    "location": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/docs"
+  },
+  "issuer_jwks_preserved": true,
+  "live_readiness": {
+    "http": 200,
+    "body": {
+      "status": "READY",
+      "mode": "oci",
+      "production_ready": false
+    }
+  },
+  "live_schema_excludes_mock_endpoints": true,
+  "anonymous_mock_minting_disabled": true,
+  "managed_user_key_counts": {
+    "sales-read": [
+      0,
+      0
+    ],
+    "sales-write": [
+      0,
+      0
+    ]
+  }
+}

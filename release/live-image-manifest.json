@@ -1,0 +1,9 @@
+{
+  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:445a8bb3d15eba802787dc2dab5f8bda116e8c0d49028bb3621bef53590ff8bf",
+  "tagged_image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker:v020-1c2b0ee310f4",
+  "digest": "sha256:445a8bb3d15eba802787dc2dab5f8bda116e8c0d49028bb3621bef53590ff8bf",
+  "base_image": "docker.io/library/python@sha256:0f086103b026048cc50cb5da25ec435c023c5241a83fc44daea593377abc61c4",
+  "source_sha256": "1c2b0ee310f4b44e6c4a80bb31396a3b6bc3f8e19b6d85b74c707bd5022185fe",
+  "builder": "OCI private VM / instance principal",
+  "dependency_scan": "passed"
+}

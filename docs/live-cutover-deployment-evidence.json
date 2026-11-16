@@ -1,0 +1,8 @@
+{
+  "bootstrap_disabled": true,
+  "publishing_disabled": true,
+  "repository_write_policy_removed": true,
+  "function_digests_match": true,
+  "function_count": 4,
+  "image_digest": "sha256:dd193d09a742a2772f646e8af62c0c211922a725060b5ec8b6af7bfb35267d5e"
+}

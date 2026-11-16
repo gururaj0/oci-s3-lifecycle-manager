@@ -19,23 +19,24 @@ class Lifecycle:
         self.cfg, self.db, self.cloud = cfg, ledger, cloud
         with ledger.tx() as c:
             for profile in cfg.profiles:
-                for n in range(cfg.pool_size):
-                    c.execute('INSERT OR IGNORE INTO users(id,profile) VALUES(?,?)',
-                              (f'{cfg.deployment_id}:{profile}:{n+1}', profile))
+                ids=cfg.service_users.get(profile,[]) if cfg.mode=='oci' else [f'{cfg.deployment_id}:{profile}:{n+1}' for n in range(cfg.pool_size)]
+                for user_id in ids:
+                    c.execute('INSERT OR IGNORE INTO users(id,profile) VALUES(?,?)',(user_id,profile))
             c.execute("INSERT OR IGNORE INTO control VALUES('paused','0')")
-            c.execute('INSERT OR IGNORE INTO objects VALUES(?,?,?)',
-                      ('sales-demo', 'quarterly/revenue.csv', b'quarter,revenue\nQ1,124000\nQ2,148000\nQ3,176000\n'))
-            c.execute('INSERT OR IGNORE INTO objects VALUES(?,?,?)',
-                      ('sales-demo', 'README.txt', b'Synthetic sales data for the OCI lifecycle mock demo.\n'))
+            c.execute("INSERT OR IGNORE INTO control VALUES('cleanup_error','0')")
+            if cfg.mode=='mock':
+                c.execute('INSERT OR IGNORE INTO objects VALUES(?,?,?)',('sales-demo','quarterly/revenue.csv',b'quarter,revenue\nQ1,124000\nQ2,148000\nQ3,176000\n'))
+                c.execute('INSERT OR IGNORE INTO objects VALUES(?,?,?)',('sales-demo','README.txt',b'Synthetic sales data.\n'))
 
     def healthy(self):
         now = time.time()
         with self.db.connect() as c:
             r = c.execute("SELECT value FROM control WHERE id='heartbeat'").fetchone()
             paused = c.execute("SELECT value FROM control WHERE id='paused'").fetchone()
+            dependency=c.execute("SELECT value FROM control WHERE id='cleanup_error'").fetchone()
             overdue = c.execute("SELECT MIN(expires_at) FROM leases WHERE state!='REVOKED' AND expires_at<?", (now,)).fetchone()[0]
         return bool(r and now-float(r[0]) <= self.cfg.cleanup_stale and
-                    (not overdue or now-overdue <= self.cfg.overdue_threshold) and paused[0] == '0')
+                    (not overdue or now-overdue <= self.cfg.overdue_threshold) and paused[0] == '0' and (not dependency or dependency[0]=='0'))
 
     def rate(self, owner):
         key = hashlib.sha256(json.dumps(owner, sort_keys=True).encode()).hexdigest()
@@ -48,8 +49,10 @@ class Lifecycle:
             raise Problem(429, 'RATE_LIMITED')
 
     def view(self, r):
-        return {('lease_id' if k == 'id' else 'status' if k == 'state' else 'scope_profile' if k == 'profile' else k):
+        result = {('lease_id' if k == 'id' else 'status' if k == 'state' else 'scope_profile' if k == 'profile' else k):
                 utc(r[k]) if k.endswith('_at') else r[k] for k in SAFE}
+        if self.cfg.mode=='oci':result['service_user_id']=r['user_id']
+        return result
 
     def owned(self, lease_id, owner):
         r = self.db.lease(lease_id)
@@ -88,8 +91,9 @@ class Lifecycle:
             # This read is intentionally inside the same writer lock as reservation.
             heartbeat = c.execute("SELECT value FROM control WHERE id='heartbeat'").fetchone()
             paused = c.execute("SELECT value FROM control WHERE id='paused'").fetchone()[0]
+            dependency=c.execute("SELECT value FROM control WHERE id='cleanup_error'").fetchone()
             overdue = c.execute("SELECT MIN(expires_at) FROM leases WHERE state!='REVOKED'").fetchone()[0]
-            if not heartbeat or time.time()-float(heartbeat[0])>self.cfg.cleanup_stale or paused=='1' or (overdue and time.time()-overdue>self.cfg.overdue_threshold):
+            if (dependency and dependency[0]!='0') or not heartbeat or time.time()-float(heartbeat[0])>self.cfg.cleanup_stale or paused=='1' or (overdue and time.time()-overdue>self.cfg.overdue_threshold):
                 raise Problem(503, 'CLEANUP_UNHEALTHY')
             user = c.execute('SELECT * FROM users WHERE profile=? AND active_lease IS NULL AND quarantined=0 ORDER BY id LIMIT 1', (profile,)).fetchone()
             if not user:
@@ -105,6 +109,7 @@ class Lifecycle:
                        idem,body.get('client_request_id'),correlation))
             self.db.audit(c,lease_id,'RESERVED',correlation)
         try:
+            if self.cfg.mode=='oci':self.cloud.validate_user(user_id)
             if self.cloud.list_keys(user_id):
                 with self.db.tx() as c:
                     c.execute('UPDATE users SET quarantined=1 WHERE id=?', (user_id,))
@@ -119,6 +124,9 @@ class Lifecycle:
                 c.execute('INSERT OR IGNORE INTO outbox(id,lease_id,generation,operation) VALUES(?,?,1,?)',
                           (lease_id+':1:setup',lease_id,'SETUP'))
                 self.db.audit(c,lease_id,'KEY_RECORDED',correlation)
+            # Confirm expiry first so asynchronous schedule creation does not consume
+            # the bounded response-replay window in Vault.
+            self.setup(lease_id,1)
             payload = {'lease_id':lease_id,'status':'ACTIVE','access_key_id':key['id'],
                        'secret_access_key':key['secret'],'endpoint':endpoint,'region':self.cfg.region,
                        'scope_profile':profile,'expires_at':utc(expires),'expiry_mode':'managed_key_deletion'}
@@ -126,7 +134,6 @@ class Lifecycle:
             ref = self.cloud.store_response(payload, until)
             with self.db.tx() as c:
                 c.execute('UPDATE leases SET replay_ref=?,replay_until=? WHERE id=?',(ref,until,lease_id))
-            self.setup(lease_id,1)
             with self.db.tx() as c:
                 r = c.execute('SELECT * FROM leases WHERE id=?',(lease_id,)).fetchone()
                 if time.time() >= expires or r['state'] != 'SCHEDULE_PENDING' or not r['schedule_id']:
@@ -135,10 +142,14 @@ class Lifecycle:
                 self.db.audit(c,lease_id,'DELIVERED',correlation)
             return 201,payload
         except Exception as exc:
+            import re
+            failure=type(exc).__name__
+            if isinstance(exc,(RuntimeError,TimeoutError)) and re.fullmatch(r'[A-Z_]{3,80}',str(exc)):
+                failure+=':'+str(exc)
             # Only stable classes/codes, never raw SDK exception strings (may include sensitive payloads).
             with self.db.tx() as c:
-                c.execute("UPDATE leases SET state='REVOKE_PENDING',revoke_intent=1,last_error=? WHERE id=?",(type(exc).__name__,lease_id))
-                self.db.audit(c,lease_id,'COMPENSATION_REQUIRED',correlation,type(exc).__name__)
+                c.execute("UPDATE leases SET state='REVOKE_PENDING',revoke_intent=1,last_error=? WHERE id=?",(failure,lease_id))
+                self.db.audit(c,lease_id,'COMPENSATION_REQUIRED',correlation,failure)
             try:
                 self.delete(lease_id,1)
             except Exception:
@@ -155,7 +166,7 @@ class Lifecycle:
                 raise RuntimeError('RETRY_KEY_NOT_PERSISTED')
             if row['expires_at'] <= time.time():
                 raise RuntimeError('LEASE_ALREADY_DUE')
-            schedule = f'{lease_id}:{generation}'
+            schedule = self.cloud.ensure_schedule(lease_id,generation,row['expires_at']) if self.cfg.mode=='oci' else f'{lease_id}:{generation}'
             c.execute("INSERT OR IGNORE INTO schedules VALUES(?,?,?,?,'ACTIVE')",(schedule,lease_id,generation,math.ceil(row['expires_at'])))
             c.execute('UPDATE leases SET schedule_id=? WHERE id=?',(schedule,lease_id))
             c.execute("DELETE FROM outbox WHERE lease_id=? AND generation=? AND operation='SETUP'",(lease_id,generation))
@@ -171,6 +182,10 @@ class Lifecycle:
         with self.db.tx() as c:
             if c.execute('SELECT 1 FROM events WHERE id=?',(event['eventID'],)).fetchone():
                 return 'DUPLICATE'
+            if self.cfg.mode=='oci' and c.execute('SELECT id FROM users WHERE id=?',(user,)).fetchone():
+                fixture={'eventID':event['eventID'],'eventType':event['eventType'],
+                         'data':{'resourceId':data.get('resourceId'),'additionalDetails':{'userId':user}}}
+                self.db.audit(c,None,'EVENT_RECEIVED',detail=json.dumps(fixture,separators=(',',':')))
             r = c.execute("SELECT l.* FROM leases l JOIN users u ON l.user_id=u.id WHERE u.id=? AND l.state IN ('PREPARING','SCHEDULE_PENDING','ACTIVE') ORDER BY l.created_at DESC LIMIT 1",(user,)).fetchone()
             if not r or r['deployment']!=self.cfg.deployment_id:
                 return 'IGNORED'
@@ -209,11 +224,13 @@ class Lifecycle:
                 if any(k['display_name']==r['display_name'] for k in self.cloud.list_keys(r['user_id'])):
                     raise RuntimeError('DELETE_NOT_CONFIRMED')
                 self.cloud.remove_response(r['replay_ref'])
+                if self.cfg.mode=='oci' and r['schedule_id']:
+                    self.cloud.remove_schedule(r['schedule_id'])
                 c.execute("UPDATE leases SET state='REVOKED',deleted_at=?,replay_ref=NULL,last_error=NULL WHERE id=?",(time.time(),lease_id))
                 c.execute('UPDATE users SET active_lease=NULL,lock_version=lock_version+1 WHERE id=? AND active_lease=?',(r['user_id'],lease_id))
                 c.execute('DELETE FROM schedules WHERE lease_id=?',(lease_id,))
                 c.execute('DELETE FROM outbox WHERE lease_id=?',(lease_id,))
-                self.db.audit(c,lease_id,'REVOKED')
+                self.db.audit(c,lease_id,'REVOKED',detail=self.cfg.workload if self.cfg.mode=='oci' else 'mock')
                 return True
             except Exception as exc:
                 attempts = r['retries']+1
@@ -235,7 +252,11 @@ class Lifecycle:
 
     def reconcile(self):
         now = time.time()
-        self.cloud.purge()
+        cleanup_errors=[]
+        try:self.cloud.purge()
+        except Exception as exc:
+            cleanup_errors.append(type(exc).__name__)
+            with self.db.tx() as c:self.db.audit(c,None,'REPLAY_CLEANUP_RETRY',detail=type(exc).__name__)
         with self.db.tx() as c:
             c.execute('UPDATE leases SET replay_ref=NULL WHERE replay_until<=?',(now,))
             # A crashed or ambiguous create may have left a key outside ledger persistence.
@@ -257,19 +278,51 @@ class Lifecycle:
                         with self.db.tx() as c:
                             c.execute('UPDATE leases SET retries=retries+1,next_retry=?,last_error=? WHERE id=?',
                                       (now+5,'SCHEDULE_REPAIR_FAILED',r['id']))
-        # Unknown keys quarantine users, including idle users. Never remove foreign keys.
-        with self.db.tx() as c:
-            for user in c.execute('SELECT * FROM users').fetchall():
-                keys = self.cloud.list_keys(user['id'])
+        # Remote IAM calls must not hold the database writer lock: a slow service
+        # must not stall another host's deadline-driven deletion or reservation.
+        with self.db.connect() as c:
+            users=[dict(r) for r in c.execute('SELECT * FROM users')]
+        for user in users:
+            identity_drift=False
+            if self.cfg.mode=='oci':
+                try:self.cloud.validate_user(user['id'])
+                except PermissionError:identity_drift=True
+                except Exception as exc:cleanup_errors.append(type(exc).__name__)
+            snapshot_at=time.time()
+            try:keys=self.cloud.list_keys(user['id'])
+            except Exception as exc:
+                cleanup_errors.append(type(exc).__name__);keys=[]
+            with self.db.tx() as c:
+                if identity_drift:
+                    c.execute('UPDATE users SET quarantined=1 WHERE id=?',(user['id'],))
+                    c.execute("UPDATE leases SET revoke_intent=1,state='REVOKE_PENDING' WHERE user_id=? AND deployment=? AND state!='REVOKED'",(user['id'],self.cfg.deployment_id))
+                    if not user['quarantined']:self.db.audit(c,None,'QUARANTINED_IDENTITY_DRIFT',detail=user['id'])
                 for key in keys:
-                    known = c.execute('SELECT 1 FROM leases WHERE display_name=? AND user_id=? AND deployment=? AND key_id=? AND state!=?',
-                                      (key['display_name'],user['id'],self.cfg.deployment_id,key['id'],'REVOKED')).fetchone()
+                    known=c.execute("SELECT 1 FROM leases WHERE display_name=? AND user_id=? AND deployment=? AND key_id=? AND (state!='REVOKED' OR deleted_at>=?)",
+                        (key['display_name'],user['id'],self.cfg.deployment_id,key['id'],snapshot_at)).fetchone()
                     if not known:
-                        pending = c.execute("SELECT 1 FROM leases WHERE display_name=? AND user_id=? AND state IN ('PREPARING','REVOKE_PENDING')",(key['display_name'],user['id'])).fetchone()
+                        pending=c.execute("SELECT 1 FROM leases WHERE display_name=? AND user_id=? AND state IN ('PREPARING','REVOKE_PENDING')",
+                            (key['display_name'],user['id'])).fetchone()
                         if not pending:
+                            late=c.execute("SELECT * FROM leases WHERE display_name=? AND user_id=? AND deployment=? AND state='REVOKED'",
+                                (key['display_name'],user['id'],self.cfg.deployment_id)).fetchone()
+                            if late and (not late['key_id'] or late['key_id']==key['id']):
+                                # A timed-out create can become visible after the first
+                                # absence check. Reopen its own lease and retry deletion;
+                                # a different recorded key ID remains a foreign-key alarm.
+                                c.execute("UPDATE leases SET state='REVOKE_PENDING',revoke_intent=1,key_id=?,key_created_at=COALESCE(key_created_at,?),expires_at=COALESCE(expires_at,?),deleted_at=NULL,next_retry=0,last_error='LATE_KEY_RECOVERY' WHERE id=?",
+                                    (key['id'],key['created'],key['created']+late['requested_ttl'],late['id']))
+                                self.db.audit(c,late['id'],'LATE_KEY_RECOVERY',detail=user['id'])
                             c.execute('UPDATE users SET quarantined=1 WHERE id=?',(user['id'],))
-                            self.db.audit(c,None,'QUARANTINED_ORPHAN',detail=user['id'])
+                            if not user['quarantined']:self.db.audit(c,None,'QUARANTINED_ORPHAN',detail=user['id'])
+        with self.db.tx() as c:
+            c.execute("UPDATE control SET value=? WHERE id='cleanup_error'",('1' if cleanup_errors else '0',))
             c.execute("INSERT INTO control VALUES('heartbeat',?) ON CONFLICT(id) DO UPDATE SET value=excluded.value",(str(time.time()),))
+            c.execute('DELETE FROM audit WHERE at<?',(now-self.cfg.audit_retention_days*86400,))
+        if self.cfg.mode=='oci':
+            try:self.cloud.publish_metrics(self.metrics())
+            except Exception as exc:
+                with self.db.tx() as c:self.db.audit(c,None,'METRICS_PUBLISH_RETRY',detail=type(exc).__name__)
 
     def pause(self, paused=True):
         with self.db.tx() as c:

@@ -1,0 +1,35 @@
+{
+  "mode": "live-oci",
+  "credentials_logged": false,
+  "checks": {
+    "jwt_rejections": true,
+    "replay_same_credentials": true,
+    "idempotency_conflict": true,
+    "status_redacted": true,
+    "owner_bound": true,
+    "actual_key_material_absent_from_logs_state_schedules": true,
+    "native_s3_before_expiry": true
+  },
+  "requests": [
+    {
+      "seconds": 47.517,
+      "status": 201
+    }
+  ],
+  "secret_hygiene_findings": {
+    "runtime_journal": 0,
+    "live.tfstate": 0,
+    "live-outputs.json": 0,
+    "live-config.json": 0,
+    "schedule_payloads": 0
+  },
+  "cleanup_mode": "OCI Scheduler and Function only; API and VM timer stopped",
+  "failed": {
+    "class": "CalledProcessError",
+    "reason": "See redacted dependency diagnostics"
+  },
+  "passed": false,
+  "confirmed_deletion_actor": "function",
+  "function_revoked_at_epoch": 1794503844.8203764,
+  "timing_measurement_complete": false
+}

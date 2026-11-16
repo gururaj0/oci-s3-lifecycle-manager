@@ -1,0 +1,15 @@
+{
+  "mode": "oci",
+  "credentials_logged": false,
+  "checks": {
+    "legacy_url_opens_live_ui": true,
+    "real_ui_issuance": true,
+    "native_oci_signed_s3_read": true,
+    "real_ui_control_plane_revocation": true,
+    "secrets_cleared_before_screenshots": true,
+    "mobile_no_overflow": true
+  },
+  "issuance_seconds": 38.643,
+  "timed_s3_denial_acceptance": "Previously failed; this check proves control-plane revocation only",
+  "passed": true
+}

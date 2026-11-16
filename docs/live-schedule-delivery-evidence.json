@@ -1,0 +1,9 @@
+{
+  "real_schedule_principal_allowed": true,
+  "unapproved_function_denied": true,
+  "results": {
+    "delete": "SUCCEEDED",
+    "sentinel": "FAILED"
+  },
+  "customer_keys_created": false
+}

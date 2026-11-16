@@ -1,0 +1,183 @@
+{
+  "mode": "oci",
+  "credentials_logged": false,
+  "checks": {
+    "inventory_metrics_and_fixtures": true,
+    "all_five_native_operations": true,
+    "repeat_probe_after_revocation": true,
+    "metadata_and_audit_redacted": true,
+    "mobile_no_overflow_and_secret_fields_cleared": true,
+    "no_browser_script_errors": true
+  },
+  "operations": {
+    "GET": {
+      "http_status": 200,
+      "expected_access": "ALLOW",
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "LIST": {
+      "http_status": 200,
+      "expected_access": "ALLOW",
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "PUT": {
+      "http_status": 200,
+      "expected_access": "ALLOW",
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "DELETE": {
+      "http_status": 403,
+      "expected_access": "DENY",
+      "observed_access": "DENY",
+      "matches_expectation": true
+    },
+    "FOREIGN": {
+      "http_status": 403,
+      "expected_access": "DENY",
+      "observed_access": "DENY",
+      "matches_expectation": true
+    }
+  },
+  "propagation_observations": [
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "GET",
+      "http_status": 200,
+      "matches_expectation": true
+    },
+    {
+      "operation": "LIST",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "LIST",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "LIST",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "LIST",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "LIST",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "LIST",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "LIST",
+      "http_status": 200,
+      "matches_expectation": true
+    },
+    {
+      "operation": "PUT",
+      "http_status": 403,
+      "matches_expectation": false
+    },
+    {
+      "operation": "PUT",
+      "http_status": 200,
+      "matches_expectation": true
+    },
+    {
+      "operation": "DELETE",
+      "http_status": 403,
+      "matches_expectation": true
+    },
+    {
+      "operation": "FOREIGN",
+      "http_status": 403,
+      "matches_expectation": true
+    }
+  ],
+  "after_revocation_observation": {
+    "http_status": 403,
+    "expected_access": "DENY",
+    "observed_access": "DENY",
+    "matches_expectation": true
+  },
+  "passed": true
+}

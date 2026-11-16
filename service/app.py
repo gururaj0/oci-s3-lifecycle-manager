@@ -1,13 +1,18 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 import asyncio
+import base64
+import hashlib
 import json
 import logging
+import re
 import time
 import uuid
 from fastapi import FastAPI, Request, Depends, Response
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
+from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,6 +35,12 @@ class Probe(BaseModel):
     operation: str = 'GET'
     bucket: str = Field(default='sales-demo',max_length=80)
     object_name: str = Field(default='quarterly/revenue.csv',max_length=256)
+
+class LiveTest(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    access_key_id: str = Field(min_length=1,max_length=128)
+    secret_access_key: str = Field(min_length=1,max_length=256,repr=False)
+    operation: Literal['GET','LIST','PUT','DELETE','FOREIGN'] = 'GET'
 
 
 def create_app(lcm=None, worker=True):
@@ -58,14 +69,48 @@ def create_app(lcm=None, worker=True):
             except asyncio.CancelledError:
                 pass
 
-    app=FastAPI(title='OCI S3 Credential Lifecycle Manager', version='0.1.0', lifespan=lifespan,
-                description='Explicit mock demo. Managed key deletion is not native STS expiry.')
+    app=FastAPI(title='OCI S3 Credential Lifecycle Manager', version='0.2.0' if e.cfg.mode=='oci' else '0.1.0', lifespan=lifespan, docs_url=None, redoc_url=None,
+                description='Managed key deletion is not native STS expiry.')
     app.state.engine=e
     app.state.auth=auth
+    connector=None
+    if e.cfg.mode=='oci' and e.cfg.oauth:
+        from service.connector_auth import ConnectorAuth
+        connector=ConnectorAuth(e,auth)
+        connector.install(app)
+    app.state.connector=connector
+
+    @app.get('/docs', include_in_schema=False)
+    def api_reference():
+        assets='https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.35.0/'
+        page=get_swagger_ui_html(openapi_url='/openapi.json', title=app.title+' — API reference',
+            swagger_js_url=assets+'swagger-ui-bundle.js', swagger_css_url=assets+'swagger-ui.css',
+            swagger_favicon_url='data:,',
+            swagger_ui_parameters={'persistAuthorization':False,'validatorUrl':None})
+        # Authorize only this generated initializer, without allowing arbitrary inline JS.
+        initializer=re.search(r'<script>(.*?)</script>',page.body.decode(),re.S).group(1)
+        digest=base64.b64encode(hashlib.sha256(initializer.encode()).digest()).decode()
+        page.headers['Content-Security-Policy']=(
+            "default-src 'self'; script-src 'self' "+assets+" 'sha256-"+digest+"'; "
+            "style-src 'self' "+assets+"; img-src 'self' data:; connect-src 'self'; "
+            "frame-ancestors 'none'; base-uri 'none'")
+        return page
+
+    @app.get('/redoc', include_in_schema=False)
+    def alternate_reference():
+        return RedirectResponse('/docs')
 
     @app.middleware('http')
     async def safety_headers(request,call_next):
         request.state.correlation=str(uuid.uuid4())
+        # Retire the old public demo while retaining its existing issuer's public key.
+        # The private operator can still mint a mapped test identity through the bastion.
+        if e.cfg.mode=='mock' and e.cfg.live_redirect_url and request.url.path!='/.well-known/jwks.json':
+            response=RedirectResponse(e.cfg.live_redirect_url+request.url.path,status_code=307)
+            response.headers['Cache-Control']='no-store'
+            return response
+        if e.cfg.mode=='oci' and (request.url.path.startswith('/demo/') or request.url.path.startswith('/mock-s3/') or request.url.path=='/.well-known/jwks.json'):
+            return JSONResponse({'error':{'code':'NOT_FOUND','correlation_id':request.state.correlation}},status_code=404,headers={'Cache-Control':'no-store'})
         # Bound payloads, including streamed bodies. Do not log tokens, request/response bodies or URLs.
         body=await request.body()
         if len(body)>1048576:
@@ -75,7 +120,8 @@ def create_app(lcm=None, worker=True):
         response.headers['X-Correlation-ID']=request.state.correlation
         response.headers['X-Content-Type-Options']='nosniff'
         response.headers['Referrer-Policy']='no-referrer'
-        response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+        if 'Content-Security-Policy' not in response.headers:
+            response.headers['Content-Security-Policy']="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
         return response
 
     @app.exception_handler(Problem)
@@ -97,7 +143,15 @@ def create_app(lcm=None, worker=True):
     bearer=HTTPBearer(auto_error=False)
 
     def owner(request: Request, credentials=Depends(bearer)):
-        return auth.verify(request.headers.get('Authorization'))
+        if request.headers.get('Authorization'):
+            who=auth.verify(request.headers.get('Authorization'))
+        elif connector:
+            who=connector.owner(request)
+        else:
+            who=auth.verify(None)
+        if e.cfg.profile_scopes and not auth.allowed(who):
+            raise Problem(403,'SCOPE_FORBIDDEN')
+        return who
 
     @app.get('/health/live')
     def live():
@@ -106,6 +160,7 @@ def create_app(lcm=None, worker=True):
     @app.get('/health/ready')
     def ready():
         healthy=e.healthy()
+        if e.cfg.mode=='oci':healthy=healthy and all(e.cfg.integration_gates.get(k) for k in ('iam_scope','vault_replay','database','scheduler'))
         return JSONResponse({'status':'READY' if healthy else 'PENDING','mode':e.cfg.mode,'production_ready':False}, status_code=200 if healthy else 503)
 
     @app.get('/v1/config')
@@ -116,6 +171,8 @@ def create_app(lcm=None, worker=True):
 
     @app.post('/v1/leases')
     def create(body:CreateLease,request:Request,who=Depends(owner)):
+        if e.cfg.mode=='oci' and not all(e.cfg.integration_gates.get(k) for k in ('iam_scope','vault_replay','database','scheduler')):
+            raise Problem(503,'LIVE_CAPABILITY_GATES_PENDING')
         idem=request.headers.get('Idempotency-Key','')
         try:
             uuid.UUID(idem)
@@ -126,16 +183,22 @@ def create_app(lcm=None, worker=True):
         if body.scope_profile not in auth.allowed(who):
             raise Problem(403,'PROFILE_FORBIDDEN')
         # Use an operator-configured public URL, never arbitrary Host/X-Forwarded-Host.
-        endpoint=(e.cfg.public_url or str(request.base_url).rstrip('/'))+'/mock-s3'
+        endpoint=('https://'+e.cfg.namespace+'.compat.objectstorage.'+e.cfg.region+'.oci.customer-oci.com') if e.cfg.mode=='oci' else (e.cfg.public_url or str(request.base_url).rstrip('/'))+'/mock-s3'
         status,payload=e.create(who,body.model_dump(),idem,request.state.correlation,endpoint)
         return JSONResponse(payload,status_code=status)
 
+    def scoped_lease(lease_id,who):
+        row=e.owned(str(lease_id),who)
+        if row['profile'] not in auth.allowed(who):raise Problem(403,'PROFILE_FORBIDDEN')
+        return row
+
     @app.get('/v1/leases/{lease_id}')
     def get(lease_id:uuid.UUID,who=Depends(owner)):
-        return e.view(e.owned(str(lease_id),who))
+        return e.view(scoped_lease(lease_id,who))
 
     @app.delete('/v1/leases/{lease_id}')
     def delete(lease_id:uuid.UUID,who=Depends(owner)):
+        scoped_lease(lease_id,who)
         status=e.revoke(str(lease_id),who)
         return Response(status_code=status)
 
@@ -143,30 +206,68 @@ def create_app(lcm=None, worker=True):
     def leases(who=Depends(owner)):
         with e.db.connect() as c:
             rows=c.execute('SELECT * FROM leases WHERE issuer=? AND subject=? ORDER BY created_at DESC LIMIT 100',(who['issuer'],who['subject'])).fetchall()
-        return {'leases':[e.view(r) for r in rows]}
+        return {'leases':[e.view(r) for r in rows if r['profile'] in auth.allowed(who)]}
 
-    @app.get('/demo/info')
+    @app.get('/v1/test-setup', include_in_schema=e.cfg.mode=='oci')
+    def test_setup(who=Depends(owner)):
+        if e.cfg.mode!='oci':raise Problem(404,'NOT_FOUND')
+        allowed=auth.allowed(who)
+        users=[]
+        for profile,ids in e.cfg.service_users.items():
+            if profile not in allowed:continue
+            for uid in ids:
+                user=e.cloud.identity.get_user(uid).data
+                users.append({'profile':profile,'user_id':uid,'name':user.name,
+                              'customer_secret_key_count':len(e.cloud.list_keys(uid))})
+        return {'mode':'oci','region':e.cfg.region,'compartment_id':e.cfg.compartment_id,
+                'service_users':users,'profiles':{p:e.cfg.profiles[p] for p in allowed if p in e.cfg.profiles},
+                'read_object':'quarterly/revenue.csv','delete_test_object':'diagnostics/delete-denied.txt',
+                'foreign_bucket':e.cfg.deployment_id+'-foreign','foreign_object':'negative-scope.txt'}
+
+    @app.get('/v1/metrics')
+    def live_metrics(who=Depends(owner)):
+        allowed=auth.allowed(who)
+        result=e.metrics()
+        result['pools']=[p for p in result['pools'] if p['profile'] in allowed]
+        with e.db.connect() as c:
+            result['states']={r[0]:r[1] for r in c.execute('SELECT state,COUNT(*) FROM leases WHERE issuer=? AND subject=? GROUP BY state',(who['issuer'],who['subject']))}
+        return result
+
+    @app.get('/v1/audit')
+    def live_audit(who=Depends(owner)):
+        with e.db.connect() as c:
+            rows=c.execute('SELECT a.seq,a.at,a.lease_id,a.action,a.detail FROM audit a JOIN leases l ON a.lease_id=l.id WHERE l.issuer=? AND l.subject=? ORDER BY a.seq DESC LIMIT 60',(who['issuer'],who['subject'])).fetchall()
+        return {'events':[dict(r) for r in rows]}
+
+    @app.post('/v1/leases/{lease_id}/tests', include_in_schema=e.cfg.mode=='oci')
+    def live_test(lease_id:uuid.UUID,body:LiveTest,who=Depends(owner)):
+        if e.cfg.mode!='oci':raise Problem(404,'NOT_FOUND')
+        scoped_lease(lease_id,who)
+        from service.live_tests import run_test
+        return run_test(e,who,str(lease_id),body)
+
+    @app.get('/demo/info', include_in_schema=e.cfg.mode=='mock')
     def info():
         return {'mode':'mock','version':'0.1.0','production_ready':False,
                 'warning':'Synthetic credentials and S3 only. No OCI IAM users or Customer Secret Keys are created.',
                 'unverified':['Unity query engine','OCI IAM scope isolation','Autonomous Database and Vault','Events and Function scheduling','OCI S3 revocation targets']}
 
-    @app.post('/demo/session')
+    @app.post('/demo/session', include_in_schema=e.cfg.mode=='mock')
     def session(request:Request):
         e.rate({'issuer':'mock-session','subject':request.client.host if request.client else 'unknown'})
         return {'token':auth.mint_demo(),'expires_in':3600,'mode':'mock'}
 
-    @app.get('/demo/metrics')
+    @app.get('/demo/metrics', include_in_schema=e.cfg.mode=='mock')
     def metrics(who=Depends(owner)):
         return e.metrics()
 
-    @app.get('/demo/audit')
+    @app.get('/demo/audit', include_in_schema=e.cfg.mode=='mock')
     def audit(who=Depends(owner)):
         with e.db.connect() as c:
             rows=c.execute('SELECT a.seq,a.at,a.lease_id,a.action,a.detail FROM audit a JOIN leases l ON a.lease_id=l.id WHERE l.issuer=? AND l.subject=? ORDER BY a.seq DESC LIMIT 60',(who['issuer'],who['subject'])).fetchall()
         return {'events':[dict(r) for r in rows]}
 
-    @app.post('/demo/probe')
+    @app.post('/demo/probe', include_in_schema=e.cfg.mode=='mock')
     async def probe(body:Probe,request:Request,who=Depends(owner)):
         import httpx
         from botocore.auth import S3SigV4Auth
@@ -192,7 +293,7 @@ def create_app(lcm=None, worker=True):
     async def s3(request:Request,bucket:str,name:str=''):
         return await handle_s3(request,e,bucket,name)
 
-    @app.get('/.well-known/jwks.json')
+    @app.get('/.well-known/jwks.json', include_in_schema=e.cfg.mode=='mock')
     def jwks():
         return auth.jwks
 
@@ -201,6 +302,6 @@ def create_app(lcm=None, worker=True):
 
     @app.get('/',include_in_schema=False)
     def index():
-        return FileResponse(static/'index.html')
+        return FileResponse(static/('live.html' if e.cfg.mode=='oci' else 'index.html'))
 
     return app

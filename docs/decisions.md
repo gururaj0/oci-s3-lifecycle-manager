@@ -1,57 +1,51 @@
-# Capability decisions — 0.1.0 mock release
+# Capability decisions — live 0.2.0
 
-These decisions enforce the PRD M0 gate. No unverified live integration is presented as a passing mock.
+The [mock-only decisions](decisions-0.1-mock.md) are historical. Live integrations are now
+implemented; see [the deployment record](live-deployment.md).
 
-## ADR-001: Actual Unity compatibility remains outstanding
+Actual Unity wrapper/query-engine acceptance remains outstanding as the user requested.
+That does not defer IAM, ADB, Vault or Functions. Raw native S3 tests and the reference adapter
+demonstrate those paths without claiming query-engine signoff. Production readiness stays false.
 
-The actual Unity wrapper/query engine was not supplied. The user explicitly requested recording
-that integration as outstanding on 12 November 2026. Ship the reference adapter and mock demo;
-keep live issuance disabled. A raw signed-S3 smoke test against the fake does not close AT02.
+Live mode uses private ADB and real OCI SDK adapters. Instance/resource principals authenticate
+runtimes; deployer OCI/SSH private keys stay local. JWT trust and immutable subject mappings are
+explicit. Mock credential, S3 and JWKS endpoints are disabled in live mode.
 
-## ADR-002: OCI hosting with explicitly simulated credential services
+IAM CreateSecretKey/DeleteCustomerSecretKey require USER_UPDATE plus their specific key permission.
+Writes are constrained by exact managed-user OCID and operation; general user modification and
+foreign credential management are denied. Membership drift inspection requires read-only identity
+metadata, while credential payload reads stay scoped to four users. Runtime cannot edit groups
+or policies. [Oracle IAM permissions](https://docs.oracle.com/en-us/iaas/Content/Identity/policyreference/iampolicyreference.htm).
 
-Provision real OCI Compute, private subnet, NSGs, API Gateway and Resource Manager stack in the
-verified Demo compartment. Simulate IAM users/keys, Vault responses, schedules and object storage.
-The mock uses SQLite writer transactions and a separate encrypted fake control-plane database.
-It creates no real IAM users, policies, Customer Secret Keys, buckets, ADB, Vault, Functions or schedules.
-Readiness means `READY` **for mock operation** and always returns `production_ready:false`.
-`LCM_MODE=oci` fails startup until M0 signoff and the live runtime are implemented.
+Vault replay is bounded by durable expiry references, at most 60 seconds. Pending deletion blocks
+native bundle retrieval; physical deletion follows OCI retention. Schedule confirmation precedes
+replay storage so scheduling does not consume the replay window. Activation waits are bounded;
+undelivered keys are compensated. Observed successful issuance exceeded 15 seconds, so target
+compliance requires measurement. [Vault deletion](https://docs.oracle.com/en-us/iaas/Content/secret-management/Tasks/delete-secret.htm).
 
-The application is embedded into the stack archive and compressed cloud-init, avoiding manual
-Docker/Fn builds and image pushes for this mock release. This is not the production immutable,
-scanned-image pipeline. Exact runtime dependencies and the provider are pinned; a vulnerability
-scan and source manifest are included in evidence. Source updates must use a new release.
+One-shot schedules use UTC, ICAL COUNT=1 and JSON lease ID/generation. Confirmation parses OCI's
+JSON-string body representation and validates it. Tagged scheduler principals can read approved
+Function metadata and invoke deletion/reconciliation only. FN_FUNCTION_READ is required for lookup
+alongside FN_INVOCATION; no general Functions management is granted. Real schedules succeed for
+deletion and fail for the sentinel. [Function permissions](https://docs.oracle.com/en-us/iaas/Content/Identity/policyreference/functionspolicyreference.htm).
 
-## ADR-003: Scheduler API requires live validation, not guessed syntax
+Events is configured in the home region. Actual lowercase credential-creation events reached the setup Function; a redacted native fixture
+and managed-user correlation are recorded in live-events-evidence.json. Synchronous setup and the
+durable outbox/reconciler also establish confirmed schedules when Events is absent.
 
-Oracle documentation supports one-time UTC Function schedules with invocation payloads.
-OCI SDK 2.191.0 exposes `START_RESOURCE`, `CRON`/`ICAL`, and `Resource.parameters`.
-The Functions guide explicitly uses action Start for Functions, so the generic enum is **not**
-evidence that Function scheduling is unsupported. A read-only live `list-resource-types` call in Demo
-returned `FunctionsFunction` for `START_RESOURCE`; see scheduler-capability-evidence.json. Confirm the one-time/payload encoding,
-rounding, dynamic-group membership, invocation-only permission, and recovery from create timeouts
-in the tenancy before implementing the live adapter. Do not grant tenancy-wide Functions management
-just because the documentation example does. No live schedule or scheduler policy was created here.
+The original Demo VCN lacks a DNS label. Private ADB therefore uses a new labeled VCN peered to
+Demo, with SSH through DemoBastion. Reserved-tag restrictions prevented child-compartment creation;
+resources remain in Demo with exact references, a dedicated Vault, owned prefixes and defined tags.
 
-## ADR-004: IAM scope cannot be inferred from returned metadata
+Images are built/audited on OCI and pinned by digest. Cloud-init fetches a private digest-verified
+source bundle using the instance principal. The Resource Manager template is authenticated/private.
+Temporary admin-secret and publishing rights are removed at handoff; bootstrap passwords rotate.
 
-Bucket READ/READ_WRITE are implemented only in the fake. Production needs dedicated nonhuman users,
-disabled unrelated capabilities, exact credential permissions, target-user conditions and negative
-raw-S3 tests. Default grants and existing group memberships must be checked. No employee key is
-created. Supplied OCI CLI authentication is used for deployment only and never copied to the VM.
+OCI user-data changes replace VMs, so upgrades preserve user data and use the image installer.
+Containers have explicit names and stop/remove commands: stopping only the Podman client can leave
+an orphaned runtime. Isolation tests check actual containers and the recorded deletion actor.
 
-## ADR-005: Autonomous Database and Vault are production work, not silent substitutions
-
-Oracle ledger migration DDL is a design artifact; the released runtime uses SQLite in mock mode only.
-Do not enable the Function handlers on OCI: their mock engine reads host-local state and is suitable
-for local contract tests, not a distributed Functions ledger. Live ADB repository, Vault lifecycle,
-bootstrap/rotation, workload-principal adapters and separate runtime roles remain unimplemented.
-The API rejects OCI mode instead of pretending that a private SQLite file is an Autonomous Database.
-
-## ADR-006: Existing network mode for this release
-
-Reuse DemoVCN's existing NAT/service routes and public gateway subnet. Create an isolated private
-backend subnet and dedicated NSGs. VM SSH ingress is only DemoBastion's private IP /32. VM has no
-public IP. The release supports public or private API Gateway selection. New-VCN mode and production
-IdP egress allowlisting remain future work. Demo JWT signing uses its own persisted RSA key, not the
-user's SSH/OCI authentication key. Public `/demo/session` is intentionally synthetic and rate-limited.
+The isolated Function-only expiry probe confirmed IAM key absence while signed S3 reads
+continued beyond the deadline. Control-plane REVOKED does not establish timed data-plane
+denial. This is a failed expiry acceptance gate; the cause is not established. Native customer
+secret keys have no cryptographic TTL, so this deployment cannot promise hard expiry.

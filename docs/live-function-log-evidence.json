@@ -1,0 +1,8 @@
+{
+  "since": "2026-11-12T17:35:00+00:00",
+  "until": "2026-11-12T17:55:14.200625+00:00",
+  "records": 14,
+  "debug_records": 0,
+  "worker_started_records": 3,
+  "scope": "Post-release invocation logs; earlier test-image DEBUG records retained"
+}

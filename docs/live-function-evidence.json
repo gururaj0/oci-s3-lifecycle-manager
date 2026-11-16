@@ -1,0 +1,7 @@
+{
+  "delete_invocation_status": 200,
+  "delete_result": {
+    "result": false
+  },
+  "unapproved_function_denied": true
+}

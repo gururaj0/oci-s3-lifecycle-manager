@@ -1,0 +1,13 @@
+CREATE TABLE lcm_users(id VARCHAR2(255) PRIMARY KEY,profile VARCHAR2(80) NOT NULL,active_lease VARCHAR2(36) UNIQUE,quarantined NUMBER(1) DEFAULT 0 NOT NULL,lock_version NUMBER DEFAULT 0 NOT NULL);
+CREATE TABLE lcm_leases(id VARCHAR2(36) PRIMARY KEY,deployment VARCHAR2(100) NOT NULL,issuer VARCHAR2(512) NOT NULL,subject VARCHAR2(255) NOT NULL,profile VARCHAR2(80) NOT NULL,profile_version NUMBER NOT NULL,user_id VARCHAR2(255) NOT NULL REFERENCES lcm_users(id),key_id VARCHAR2(255),display_name VARCHAR2(255) UNIQUE NOT NULL,generation NUMBER DEFAULT 1 NOT NULL,state VARCHAR2(24) NOT NULL,requested_ttl NUMBER NOT NULL,created_at NUMBER NOT NULL,key_created_at NUMBER,expires_at NUMBER,delivered_at NUMBER,deleted_at NUMBER,schedule_id VARCHAR2(255),replay_ref VARCHAR2(255),replay_until NUMBER,request_hash VARCHAR2(64) NOT NULL,idem VARCHAR2(80) NOT NULL,client_request_id VARCHAR2(120),revoke_intent NUMBER(1) DEFAULT 0 NOT NULL,retries NUMBER DEFAULT 0 NOT NULL,next_retry NUMBER DEFAULT 0 NOT NULL,last_error VARCHAR2(100),correlation_id VARCHAR2(36) NOT NULL,UNIQUE(issuer,subject,idem));
+CREATE TABLE lcm_outbox(id VARCHAR2(100) PRIMARY KEY,lease_id VARCHAR2(36) REFERENCES lcm_leases(id),generation NUMBER NOT NULL,operation VARCHAR2(40) NOT NULL,attempts NUMBER DEFAULT 0 NOT NULL,next_retry NUMBER DEFAULT 0 NOT NULL,UNIQUE(lease_id,generation,operation));
+CREATE TABLE lcm_schedules(id VARCHAR2(255) PRIMARY KEY,lease_id VARCHAR2(36) REFERENCES lcm_leases(id),generation NUMBER NOT NULL,due NUMBER NOT NULL,state VARCHAR2(20) NOT NULL,UNIQUE(lease_id,generation));
+CREATE TABLE lcm_events(id VARCHAR2(255) PRIMARY KEY,lease_id VARCHAR2(36),received_at NUMBER NOT NULL);
+CREATE TABLE lcm_audit(seq NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,at NUMBER NOT NULL,lease_id VARCHAR2(36),action VARCHAR2(80) NOT NULL,correlation_id VARCHAR2(36),detail VARCHAR2(2000));
+CREATE TABLE lcm_control(id VARCHAR2(100) PRIMARY KEY,value VARCHAR2(2000) NOT NULL);
+CREATE TABLE lcm_rate_buckets(id VARCHAR2(100) PRIMARY KEY,minute NUMBER NOT NULL,count NUMBER NOT NULL);
+CREATE TABLE lcm_replay_refs(id VARCHAR2(255) PRIMARY KEY,expires NUMBER NOT NULL,removed NUMBER(1) DEFAULT 0 NOT NULL);
+CREATE INDEX leases_cleanup ON lcm_leases(state,expires_at,next_retry);
+INSERT INTO lcm_control(id,value) VALUES('writer_lock','1');
+INSERT INTO lcm_control(id,value) VALUES('schema_version','2');
+COMMIT;

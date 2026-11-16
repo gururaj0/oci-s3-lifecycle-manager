@@ -16,14 +16,16 @@ class LeasedCredentials:
     expires_at: str
 
     def boto3_arguments(self):
+        from botocore.config import Config
         return {'aws_access_key_id':self.access_key_id,'aws_secret_access_key':self.secret_access_key,
-                'endpoint_url':self.endpoint,'region_name':self.region}
+                'endpoint_url':self.endpoint,'region_name':self.region,
+                'config':Config(signature_version='s3v4',s3={'addressing_style':'path'})}
 
 class LeaseClient:
     def __init__(self,base_url,token_provider):
         if not base_url.startswith('https://') and not base_url.startswith('http://127.0.0.1:'):
             raise ValueError('HTTPS required outside loopback')
-        self.http=httpx.Client(base_url=base_url.rstrip('/'),timeout=20)
+        self.http=httpx.Client(base_url=base_url.rstrip('/'),timeout=120)
         self.token_provider=token_provider
 
     def create(self,profile,ttl_seconds=900,idempotency_key=None,client_request_id=None):

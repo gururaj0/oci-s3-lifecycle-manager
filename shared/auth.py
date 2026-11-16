@@ -22,8 +22,8 @@ def private_file(path: Path, value: bytes):
 class Auth:
     def __init__(self, cfg):
         self.cfg = cfg
-        cfg.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
         if cfg.mode == 'mock':
+            cfg.state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
             key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
             self.private = private_file(cfg.state_dir / 'demo-signing.pem', key.private_bytes(
                 serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption()))
@@ -54,11 +54,16 @@ class Auth:
                                 options={'require': ['exp', 'iss', 'aud', 'sub', 'iat']})
             if not isinstance(claims['sub'], str) or not claims['sub']:
                 raise ValueError('subject')
-            return {'issuer': claims['iss'], 'subject': claims['sub']}
+            scope=claims.get('scope','')
+            if not isinstance(scope,str):raise ValueError('scope')
+            return {'issuer': claims['iss'], 'subject': claims['sub'], 'scopes':scope.split()}
         except (jwt.PyJWTError, ValueError, TypeError):
             raise Problem(401, 'INVALID_IDENTITY') from None
 
     def allowed(self, owner):
         if self.cfg.mode == 'mock' and owner['issuer'] == self.cfg.issuer and owner['subject'].startswith('demo:'):
             return list(self.cfg.profiles)
-        return self.cfg.identities.get(owner['issuer'], {}).get(owner['subject'], [])
+        profiles=self.cfg.identities.get(owner['issuer'], {}).get(owner['subject'], [])
+        if self.cfg.profile_scopes:
+            return [p for p in profiles if self.cfg.profile_scopes.get(p) in owner.get('scopes',[])]
+        return profiles

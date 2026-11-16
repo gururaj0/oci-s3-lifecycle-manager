@@ -1,0 +1,40 @@
+{
+  "live": {
+    "/health/live": {
+      "http": 200,
+      "body": {
+        "status": "LIVE"
+      }
+    },
+    "/health/ready": {
+      "http": 503,
+      "body": {
+        "status": "PENDING",
+        "mode": "oci",
+        "production_ready": false
+      }
+    }
+  },
+  "mock": {
+    "/health/live": {
+      "http": 200,
+      "body": {
+        "status": "LIVE"
+      }
+    },
+    "/health/ready": {
+      "http": 200,
+      "body": {
+        "status": "READY",
+        "mode": "mock",
+        "production_ready": false
+      }
+    }
+  },
+  "issuance_paused": true,
+  "api_active": true,
+  "cleanup_timer_active": true,
+  "readiness_pending_reason": "Operator pause after failed timed S3 denial acceptance",
+  "outstanding_leases": 0,
+  "remaining_managed_user_keys": 0
+}

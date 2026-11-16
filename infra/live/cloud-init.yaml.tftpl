@@ -1,0 +1,8 @@
+#cloud-config
+write_files:
+  - path: /opt/lcm-live/bootstrap.py
+    permissions: '0700'
+    encoding: gz+b64
+    content: ${bootstrap_b64}
+runcmd:
+  - [bash, -c, 'dnf -y install python3.12 python3.12-pip podman && python3.12 -m venv /opt/lcm-live/venv && /opt/lcm-live/venv/bin/pip install oci==2.191.0 oracledb==26.1.0 requests==2.34.2 && /opt/lcm-live/venv/bin/python /opt/lcm-live/bootstrap.py']

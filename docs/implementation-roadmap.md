@@ -1,25 +1,20 @@
-# Remaining production implementation
+# Remaining production acceptance
 
-The user's requested mock demonstration is implemented on OCI. The attached PRD's **complete live
-production service is not implemented**. This roadmap follows the PRD's mandatory M0-before-M2 gate.
+Live IAM/S3, private ADB, Vault, Functions, scheduling, immutable OCI image build, automatic
+Resource Manager bootstrap and external alarms are implemented. See [acceptance](acceptance.md)
+and [live deployment](live-deployment.md) for evidence and limits.
 
-1. M0: run the actual Unity wrapper/query engine; get its integration owner signoff. Prove IAM
-   credential-only per-user management, service-user capability isolation and real bucket scopes.
-   Capture a real home-region credential event. Prove one-time Function scheduling, payloads,
-   timing, invocation-only policy and dynamic schedules without per-lease IAM edits.
-2. M2: implement the transactional Oracle ledger repository, migration runner and dedicated schema
-   bootstrap. Implement workload-principal OCI key/Vault/scheduler adapters and timeout reconciliation.
-   Resolve Vault replay expiry/purge semantics with evidence. Implement the scanned immutable VM
-   and Function artifact build pipeline and authenticated release source.
-3. M2: add private Autonomous Database/Vault access, Functions, Events, independent recurring
-   Resource Scheduler cleanup, monitoring/notifications, separate narrow runtime roles and preflight.
-   Implement new-network mode, deployment IdP/JWKS/authorized-subject configuration and schema forms.
-4. M3: run all real S3 negative tests, concurrent/distributed reservations, create/crash/Vault/schedule
-   failure compensation, control-plane outages, permission drift and external heartbeat alarms.
-   Measure 100 real issuances and real revocation p95; do not reuse mock timing as evidence.
-5. M4: validate active-lease rolling upgrades/rollback, security-audit retention/export, drain/removal,
-   lifecycle quota pressure and operational handoff. Publish a signed/versioned release source and
-   a working Deploy-to-Oracle-Cloud URL only after a supported archive URL exists.
+1. Obtain actual Unity wrapper/query-engine integration and owner signoff. The user explicitly
+   accepted this as outstanding; raw S3/reference tests do not close it.
+2. Resolve failed timed S3 denial acceptance: Function deletion and IAM absence were observed
+   while signed reads still succeeded. Finish native concurrency, outage/recovery and 100-request
+   issuance measurements. Record service timing and failures without substituting mock results.
+3. Extend live duplicate/reorder event testing. An actual home-region credential creation fixture
+   is now captured, and durable setup/outbox also works without Events.
+4. Configure an approved alert destination, production JWT issuer/subjects and operational owner.
+   Alarms and a dedicated topic exist, with no unrelated recipients subscribed.
+5. Replay the authenticated private release in a separate fresh environment. Drain/revoke and
+   export audit before teardown; preserve customer data. Terraform destroy is not key revocation.
 
-The `oci` startup gate must stay in place until the live implementation and evidence exist.
-Adding an operator bypass flag or relabeling the fake adapter is not an acceptable completion path.
+Live readiness requires real capability gates and a fresh cleanup heartbeat. Production readiness
+remains false until PRD acceptance completes; relabeling a fake adapter cannot enable it.

@@ -1,0 +1,48 @@
+{
+  "mode": "live-oci",
+  "credentials_printed": false,
+  "profiles": {
+    "sales-read-1": {
+      "list": true,
+      "get": true,
+      "write": false,
+      "overwrite": false,
+      "multipart": false,
+      "delete_denied": true,
+      "foreign_bucket_denied": true,
+      "native_iam_denied": true
+    },
+    "sales-read-2": {
+      "list": true,
+      "get": true,
+      "write": false,
+      "overwrite": false,
+      "multipart": false,
+      "delete_denied": true,
+      "foreign_bucket_denied": true,
+      "native_iam_denied": true
+    },
+    "sales-write-1": {
+      "list": true,
+      "get": true,
+      "write": true,
+      "overwrite": true,
+      "multipart": true,
+      "delete_denied": true,
+      "foreign_bucket_denied": true,
+      "native_iam_denied": true
+    },
+    "sales-write-2": {
+      "list": true,
+      "get": true,
+      "write": true,
+      "overwrite": true,
+      "multipart": true,
+      "delete_denied": true,
+      "foreign_bucket_denied": true,
+      "native_iam_denied": true
+    }
+  },
+  "general_user_update_denied": true,
+  "foreign_user_management_denied": true
+}

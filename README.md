@@ -1,16 +1,42 @@
 # OCI S3 Credential Lifecycle Manager
 
-**0.1.0 mock release:** FastAPI credential-leasing API and interactive demo, deployed on a private
-OCI VM behind HTTPS API Gateway through OCI Resource Manager. All IAM keys, scope enforcement,
-Vault, scheduler and S3 behavior are explicitly simulated. **This is not the production MVP.**
-The PRD's M0 live integration gates remain outstanding, including actual Unity compatibility
-(as agreed with the user). `LCM_MODE=oci` rejects startup; readiness always says `production_ready:false`.
+**0.2.0 live integration demo** adds real workload-principal IAM Customer Secret Keys,
+a private Autonomous Database ledger, Vault replay storage, OCI Functions, Resource Scheduler,
+and external cleanup alarms. The previous public mock URL now redirects to the live deployment.
+See [live deployment and evidence](docs/live-deployment.md) for current acceptance results.
+Actual Unity/query-engine integration remains outstanding; production readiness stays false.
 
 See [deployed demo and evidence](docs/deployment.md), [acceptance matrix](docs/acceptance.md),
 [capability decisions](docs/decisions.md), [threat model](docs/threat-model.md) and
 [operations/drain runbook](docs/operations.md).
 
-## Demo
+## Live demo
+
+[Open the live OCI demo](https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/).
+Use **Sign in with OCI** in the live UI with the approved Default-domain operator account.
+The UI simulates the Unity connector: the backend obtains an Identity Domains client-credentials
+JWT and keeps OAuth secrets in Vault. The browser receives an HttpOnly session cookie.
+For direct API testing, `python scripts/identity_demo_token.py` obtains a service token through
+DemoBastion; treat its stdout as a secret. The old demo-signed JWT is no longer accepted.
+See [Identity Domains authentication](docs/identity-domain-auth.md).
+
+The timed expiry acceptance test failed: signed S3 reads still succeeded 237.995 seconds after
+the deadline despite Function revocation and confirmed IAM key absence. Issuance samples also
+exceeded 15 seconds; a 100-request p95 run has not been completed. See the evidence before relying
+on lease deadlines. Real-credential issuance is enabled for demo testing at the user’s request. The UI displays
+the failed expiry target explicitly. This deployment remains a test environment with
+`production_ready:false`; its requested deadlines are not hard access cutoffs.
+
+The live UI includes pool health, service-user/key-count inventory, lease countdowns,
+owner-bound activity, and real S3 fixture checks for read/list/write, delete denial and foreign
+bucket denial. Create a lease to reveal its test controls; keep its credentials in memory to
+repeat a check after revocation. Customer Secret Keys appear under the listed service user,
+not your personal OCI user.
+
+## Original mock demo
+
+The original mock release remains available for local use. Its former public URL redirects
+to live OCI, including API requests; anonymous synthetic credential minting is no longer public.
 
 The browser opens a signed synthetic session, lets you request a READ or READ_WRITE profile,
 issues a distinct fake key from a two-user pool, and tests AWS Signature V4 reads/writes and denials.
@@ -35,7 +61,7 @@ python3 -m venv .venv
 ```
 
 Open `http://127.0.0.1:8080` and `/docs`. Do not bind a developer server publicly. Config is optional
-JSON via `LCM_CONFIG`; runtime state uses `LCM_STATE_DIR` (default `.local`). Production mode is gated.
+JSON via `LCM_CONFIG`; runtime state uses `LCM_STATE_DIR` (default `.local`). Live issuance is gated on recorded capability checks.
 
 ## REST
 
@@ -49,7 +75,7 @@ confirmed deletion 204). `/v1/config` discovers authorized profiles. `/health/li
 return redacted health. The generated [OpenAPI spec](openapi/openapi.json) and [reference wrapper](wrapper/client.py)
 are included. `/demo/*` and `/mock-s3/*` are intentionally synthetic demo surfaces.
 
-## Deploy to OCI
+## Deploy the original mock to OCI
 
 The current mock release supports **existing-network mode** and public/private gateway choice.
 Use your OCI CLI default profile and home region. The deployment helper independently resolves and
@@ -79,12 +105,13 @@ No unusable public button or fabricated release URL is supplied.
 
 ## Repository
 
-`shared/` domain/ledger/fake provider; `service/` API/auth/UI; `functions/` handler contract prototypes;
-`infra/` validated mock Resource Manager stack/schema; `db/migrations/` Oracle design DDL;
-`wrapper/` reference REST adapter; `tests/` unit/contract/integration guidance; `scripts/` preflight,
-packaging/deployment/smoke/operator; `openapi/` specification; `release/` archive/manifest; `docs/` evidence.
+`shared/` lifecycle plus mock and OCI adapters; `service/` API/JWT/UI; `functions/live_handler.py`
+deployed setup/deletion/reconciliation handler; `infra/` original mock stack; `infra/live/` live
+Resource Manager stack and automatic private-artifact bootstrap; `db/migrations/` applied Oracle
+schema; `wrapper/` reference adapter; `tests/` local contracts; `scripts/` build, deployment,
+acceptance and operations; `release/` pinned live manifest; `docs/` redacted evidence.
 
-Functions and Oracle DDL are **prototypes/design artifacts**, not deployed live integrations.
-Production ADB/Vault/IAM/Event/Function adapters, immutable image pipeline, external alarms,
-new-network mode, delegated auth and production upgrade/drain validation remain implementation work
-behind M0. See the acceptance matrix before making any production support claims.
+The live integrations, private ADB/Vault network, scanned OCI image build, Functions, schedules,
+external alarms and private Resource Manager template are implemented. Actual Unity integration,
+full live fault/load acceptance and the PRD service targets remain gates. See the current
+[acceptance matrix](docs/acceptance.md) before making production-support claims.

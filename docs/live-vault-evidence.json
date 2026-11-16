@@ -1,0 +1,8 @@
+{
+  "mode": "live-oci",
+  "oracle_transactional_ledger": true,
+  "vault_response_replay": true,
+  "pending_deletion_blocks_native_retrieval": true,
+  "customer_secret_keys_created": false,
+  "runtime_create_privileges_removed": true
+}

@@ -1,0 +1,50 @@
+{
+  "checks": {
+    "anonymous_denied": true,
+    "domain_token_accepted": true,
+    "read_scope_cannot_issue_write": true,
+    "legacy_signer_rejected": true,
+    "domain_identity_created_native_lease": true,
+    "read_scope_cannot_access_write_lease": true,
+    "all_five_native_operations": true,
+    "metadata_secret_redaction": true,
+    "only_test_lease_revoked": true,
+    "ui_signin_redirect_and_mobile_layout": true,
+    "ui_no_script_errors": true,
+    "manual_bearer_form_hidden": true,
+    "live_cookie_flags_and_invalid_callback": true,
+    "operator_helper_uses_vault_and_domain": true,
+    "final_runtime_ready": true
+  },
+  "operations": {
+    "GET": {
+      "http_status": 200,
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "LIST": {
+      "http_status": 200,
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "PUT": {
+      "http_status": 200,
+      "observed_access": "ALLOW",
+      "matches_expectation": true
+    },
+    "DELETE": {
+      "http_status": 403,
+      "observed_access": "DENY",
+      "matches_expectation": true
+    },
+    "FOREIGN": {
+      "http_status": 403,
+      "observed_access": "DENY",
+      "matches_expectation": true
+    }
+  },
+  "production_ready": false,
+  "interactive_operator_sign_in": "confirmed by operator in this deployment session",
+  "passed": true,
+  "unit_tests_passed": 58
+}

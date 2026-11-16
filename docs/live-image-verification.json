@@ -1,0 +1,7 @@
+{
+  "python": "3.12.16",
+  "dependencies": 72,
+  "vulnerabilities": 0,
+  "image_digest": "sha256:89cb8c36bafe4b6534521f3ca93ccc52216216f71d0d9546b7108b81bd979a18",
+  "builder_source_sha256": "a59ad389af64da7b8a44e0bceb712e7f3f1ef17fa01d27fbc5d091c5d66e3ff1"
+}

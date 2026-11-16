@@ -1,0 +1,24 @@
+{
+  "compartment_verified": "ocid1.compartment.oc1..aaaaaaaav6gvasmb4eyn6fnuuaoabal6mdfzuu4qxf3ll5kidwj24jxcn3dq",
+  "domain": "https://idcs-1ee8a5696b814af291e90b1adc2fe166.identity.oraclecloud.com",
+  "issuer": "https://identity.oraclecloud.com/",
+  "audience": "https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/lifecycle/",
+  "subject": "6b89e11c33014c97a541b576af2cd39e",
+  "scope": "sales-write sales-read",
+  "lifetime_seconds": 600,
+  "signature_verified": true,
+  "apps": {
+    "Lease API": {
+      "id": "401a9e32d2f144929044ff8eff6d6e98",
+      "client_id": "77e120b0c0334f9cb37abaffac967fc8"
+    },
+    "Unity Demo Connector": {
+      "id": "73592098c4fa4b23ab9920ae375d26aa",
+      "client_id": "6b89e11c33014c97a541b576af2cd39e"
+    },
+    "Demo UI Sign In": {
+      "id": "dc2735c74e1046f99a0ec3d1dd689ff8",
+      "client_id": "91e6320f1e7d4d86b72cdf2ae22a32f6"
+    }
+  }
+}

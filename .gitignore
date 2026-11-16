@@ -13,3 +13,5 @@ __pycache__/
 .terraform/
 release/*.zip
 ~$*
+
+infra/live/lcm-live-source.tar.xz

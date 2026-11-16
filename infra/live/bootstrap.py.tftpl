@@ -1,0 +1,36 @@
+"""Secret-free cloud-init entry point. Authentication stays on the instance principal."""
+import base64,hashlib,json,os,subprocess,tarfile,time
+from pathlib import Path
+import oci
+root=Path('/opt/lcm-live'); root.mkdir(exist_ok=True)
+cfg=json.loads(base64.b64decode('${config_b64}'))
+config_dir=Path('/etc/lcm-live'); config_dir.mkdir(mode=0o755,exist_ok=True)
+(config_dir/'config.json').write_text(json.dumps(cfg)); (config_dir/'config.json').chmod(0o644)
+bootstrap=dict(cfg,admin_secret_id='${admin_secret_id}')
+(config_dir/'bootstrap.json').write_text(json.dumps(bootstrap)); (config_dir/'bootstrap.json').chmod(0o600)
+try:
+    for attempt in range(180):
+        try:
+            signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+            client=oci.object_storage.ObjectStorageClient({'region':cfg['region']},signer=signer)
+            blob=client.get_object('${namespace}','${bucket}','${object_name}').data.content
+            break
+        except Exception:
+            if attempt==179:raise
+            time.sleep(5)
+    if hashlib.sha256(blob).hexdigest()!='${source_sha256}':raise RuntimeError('RELEASE_DIGEST_MISMATCH')
+    archive=root/'release.tar.xz';archive.write_bytes(blob)
+    source=root/'source';source.mkdir(exist_ok=True)
+    with tarfile.open(archive) as t:t.extractall(source,filter='data')
+    env=dict(os.environ,LCM_BOOTSTRAP_CONFIG=str(config_dir/'bootstrap.json'),PYTHONPATH=str(source))
+    marker=root/'schema-bootstrap.json'
+    if not marker.exists():
+        result=subprocess.run(['/opt/lcm-live/venv/bin/python','scripts/bootstrap_database.py'],cwd=source,env=env,capture_output=True,text=True)
+        if result.returncode:raise RuntimeError('SCHEMA_BOOTSTRAP_FAILED')
+        marker.write_text(result.stdout)
+    (source/'function-build-manifest.json').write_text(json.dumps({'image':'${image}'}))
+    subprocess.run(['/opt/lcm-live/venv/bin/python','scripts/install_live_runtime.py'],cwd=source,check=True)
+    (root/'bootstrap-status.json').write_text(json.dumps({'status':'PENDING','reason':'Run live capability and lifecycle acceptance before enabling issuance'}))
+except Exception as exc:
+    (root/'bootstrap-status.json').write_text(json.dumps({'status':'FAILED','reason':type(exc).__name__}))
+    raise SystemExit('Live bootstrap failed; inspect /opt/lcm-live/bootstrap-status.json')

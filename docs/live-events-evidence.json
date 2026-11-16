@@ -1,0 +1,15 @@
+{
+  "actual_oci_events_received": 11,
+  "source": "OCI Events -> setup Function -> ADB audit",
+  "redacted_actual_fixture": {
+    "eventID": "4f635ef8-eaa6-4c02-af88-a29303a1916b",
+    "eventType": "com.oraclecloud.identitycontrolplane.createcustomersecretkey",
+    "data": {
+      "resourceId": "ocid1.credential.oc1..aaaaaaaax4lg7el7sbzkghnqjjbxv6w3nsdvxjxqyd24punria47w7np32rq",
+      "additionalDetails": {
+        "userId": "ocid1.user.oc1..aaaaaaaabk7bnd5zif5calvwkjnxm6tswtub5ytuhrint476spvlyptgur5q"
+      }
+    }
+  },
+  "fixture_user_is_managed": true
+}

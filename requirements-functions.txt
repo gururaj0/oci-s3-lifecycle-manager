@@ -1,0 +1,2 @@
+-r requirements-oci.txt
+fdk==0.1.129

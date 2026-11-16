@@ -1,0 +1,271 @@
+{
+  "mode": "live-oci",
+  "credentials_logged": false,
+  "checks": {
+    "jwt_rejections": true,
+    "replay_same_credentials": true,
+    "idempotency_conflict": true,
+    "status_redacted": true,
+    "owner_bound": true,
+    "actual_key_material_absent_from_logs_state_schedules": true,
+    "native_s3_before_expiry": true,
+    "s3_denied_after_confirmed_deletion": false,
+    "durable_revocation_after_api_restart": true,
+    "deleted_by_function": true
+  },
+  "requests": [
+    {
+      "seconds": 43.409,
+      "status": 201
+    }
+  ],
+  "secret_hygiene_findings": {
+    "runtime_journal": 0,
+    "live.tfstate": 0,
+    "live-outputs.json": 0,
+    "live-config.json": 0,
+    "schedule_payloads": 0
+  },
+  "cleanup_mode": "OCI Scheduler and Function only; API and VM timer stopped",
+  "expiry_observations": [
+    {
+      "seconds_after_deadline": 1.112,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 6.934,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 12.672,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 18.422,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 24.215,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 29.937,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 35.698,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 41.504,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 47.269,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 53.102,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 58.952,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 64.765,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 70.512,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 76.235,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 82.106,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 87.846,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 93.622,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 99.316,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 105.104,
+      "actor": "PENDING",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 110.936,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 116.724,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 122.451,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 128.21,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 133.925,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 139.701,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 145.479,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 151.304,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 157.068,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 162.806,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 168.606,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 174.364,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 180.158,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 185.984,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 191.742,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 197.515,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 203.312,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 209.021,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 214.815,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 220.556,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 226.324,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 232.139,
+      "actor": "function",
+      "s3_allowed": true
+    },
+    {
+      "seconds_after_deadline": 237.995,
+      "actor": "function",
+      "s3_allowed": true
+    }
+  ],
+  "deletion_actor": "function",
+  "lifecycle": {
+    "lease_id": "12e5cf44-302b-43e0-a2c9-aeebe411e8fe",
+    "deadline": "2026-11-12T17:52:38.628000Z",
+    "first_success_at": 1794505783.1842518,
+    "observed_denial_at": null,
+    "delay_beyond_deadline_seconds": null
+  },
+  "issuance": {
+    "samples": 1,
+    "p95_seconds": null,
+    "target_seconds": 15,
+    "acceptance_measured": false,
+    "maximum_observed_seconds": 43.409
+  },
+  "passed": false,
+  "independent_iam_inventory": {
+    "sales-read": [
+      0,
+      0
+    ],
+    "sales-write": [
+      0,
+      0
+    ]
+  },
+  "control_plane_deletion_seconds_after_deadline": 105.969,
+  "timed_s3_denial_target_met": false,
+  "cause": "Not established"
+}

@@ -1,0 +1,8 @@
+{
+  "same_schema_rollback_and_upgrade": true,
+  "active_lease_preserved": true,
+  "key_reference_unchanged": true,
+  "deadline_unchanged": true,
+  "generation_unchanged": true,
+  "independent_timer_kept_running": true
+}

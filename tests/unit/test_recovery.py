@@ -105,3 +105,75 @@ def test_pause_overdue_and_outage_recovery(env,caller):
     assert issue(client,caller).status_code==503
     e.pause(False)
     assert issue(client,caller).status_code==201
+
+
+def test_vault_cleanup_failure_does_not_block_overdue_key_deletion(env,caller,monkeypatch):
+    e,cloud,_,client=env
+    body=issue(client,caller).json();r=e.db.lease(body['lease_id'])
+    with e.db.tx() as c:
+        c.execute('UPDATE leases SET expires_at=? WHERE id=?',(time.time()-1,r['id']))
+    real_purge=cloud.purge
+    def unavailable():raise TimeoutError('vault unavailable')
+    monkeypatch.setattr(cloud,'purge',unavailable)
+    e.reconcile()
+    assert not cloud.list_keys(r['user_id'])
+    assert e.db.lease(r['id'])['state']=='REVOKED'
+    assert not e.healthy()
+    assert issue(client,caller).status_code==503
+    monkeypatch.setattr(cloud,'purge',real_purge)
+    e.reconcile()
+    assert e.healthy()
+
+
+def test_reconcile_identity_calls_do_not_hold_writer_lock(env,monkeypatch):
+    from contextlib import contextmanager
+    e,cloud,_,_=env
+    original_tx=e.db.tx;original_list=cloud.list_keys
+    depth=0
+    @contextmanager
+    def transaction():
+        nonlocal depth
+        with original_tx() as connection:
+            depth+=1
+            try:yield connection
+            finally:depth-=1
+    def list_keys(user):
+        assert depth==0,'Remote identity inspection held the writer lock'
+        return original_list(user)
+    monkeypatch.setattr(e.db,'tx',transaction)
+    monkeypatch.setattr(cloud,'list_keys',list_keys)
+    e.reconcile()
+    assert e.healthy()
+
+
+def test_live_identity_drift_quarantines_and_revokes_owned_lease(env,caller,monkeypatch):
+    e,cloud,_,client=env
+    lease=issue(client,caller).json();record=e.db.lease(lease['lease_id'])
+    e.cfg.mode='oci'
+    def validate(user):
+        if user==record['user_id']:raise PermissionError('IDENTITY_MEMBERSHIP_DRIFT')
+    monkeypatch.setattr(cloud,'validate_user',validate,raising=False)
+    monkeypatch.setattr(cloud,'publish_metrics',lambda _:None,raising=False)
+    monkeypatch.setattr(cloud,'remove_schedule',lambda _:None,raising=False)
+    e.reconcile()
+    assert e.db.lease(record['id'])['state']=='REVOKE_PENDING'
+    with e.db.connect() as c:
+        assert c.execute('SELECT quarantined FROM users WHERE id=?',(record['user_id'],)).fetchone()[0]==1
+    e.reconcile()
+    assert e.db.lease(record['id'])['state']=='REVOKED'
+    assert not cloud.list_keys(record['user_id'])
+
+
+def test_late_provider_create_is_recovered_after_initial_absence(env,caller):
+    e,cloud,_,client=env
+    lease=issue(client,caller).json();record=e.db.lease(lease['lease_id'])
+    e.revoke(record['id'],{'issuer':record['issuer'],'subject':record['subject']})
+    # Model a create with an unknown reply that appears only after compensation
+    # initially listed no key. No foreign or unrelated display name is adopted.
+    with e.db.tx() as c:c.execute('UPDATE leases SET key_id=NULL WHERE id=?',(record['id'],))
+    cloud.create_key(record['user_id'],record['display_name'])
+    e.reconcile()
+    assert e.db.lease(record['id'])['state']=='REVOKE_PENDING'
+    e.reconcile()
+    assert e.db.lease(record['id'])['state']=='REVOKED'
+    assert not cloud.list_keys(record['user_id'])

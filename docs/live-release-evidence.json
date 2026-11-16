@@ -1,0 +1,7 @@
+{
+  "private_template_id": "ocid1.ormtemplate.oc1.iad.amaaaaaa5kvp65ialscuynepfokv2zx3rsguhyqkkduggg2vle5d2caazm2a",
+  "template_state": "ACTIVE",
+  "archive_sha256": "6525983dfd9e45b4cd1b880e0efffc1892b0c135642bbb61319af009249ffd51",
+  "download_matches_scanned_archive": true,
+  "image_digest": "sha256:89cb8c36bafe4b6534521f3ca93ccc52216216f71d0d9546b7108b81bd979a18"
+}

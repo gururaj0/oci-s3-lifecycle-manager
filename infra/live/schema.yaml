@@ -1,0 +1,38 @@
+title: OCI S3 Credential Lifecycle Manager — live integration demo
+description: Private VM, private Autonomous Database, Vault, real IAM key leasing, OCI Functions, Resource Scheduler and external alarms. Requires home-region administrator bootstrap, approved JWT trust, private release-image access and existing DemoBastion. Billable resources include a 2-OCPU/16-GB VM, 50-GB boot volume, 2-ECPU/20-GB ADB, Vault, Functions, API Gateway, NAT and monitoring. Apply success is not readiness; live acceptance gates must pass.
+schemaVersion: 1.1.0
+version: '0.2.0'
+locale: en
+variableGroups:
+  - title: Verified Demo placement
+    variables: [tenancy_ocid, compartment_ocid, region, availability_domain, namespace, prefix]
+  - title: Existing DemoBastion network
+    variables: [vcn_id, public_subnet_id, private_subnet_id, bastion_private_ip, ssh_public_key, image_id]
+  - title: JWT trust and release
+    variables: [runtime_config_json, function_image, function_image_digest, bootstrap_enabled]
+variables:
+  tenancy_ocid:
+    type: oci:identity:tenancy:id
+    required: true
+  compartment_ocid:
+    type: oci:identity:compartment:id
+    required: true
+    title: Verified active Demo compartment
+  region:
+    type: oci:identity:region:name
+    required: true
+  ssh_public_key:
+    type: oci:core:ssh:publickey
+    required: true
+  runtime_config_json:
+    type: string
+    required: true
+    multiline: true
+    title: Approved issuer, audience, HTTPS JWKS and immutable subject mappings (no secrets)
+  bootstrap_enabled:
+    type: boolean
+    default: true
+    title: Temporary schema bootstrap and image-push permissions; disable after bootstrap
+outputGroups:
+  - title: Live deployment
+    outputs: [api_endpoint, functions, runtime, alerts_topic_id]

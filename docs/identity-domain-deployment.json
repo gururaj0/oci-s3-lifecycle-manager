@@ -1,0 +1,15 @@
+{
+  "job_id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65iakz4ycfh5c4kljkfcddz2d4ayriws34ccvlrdv5ag6daq",
+  "state": "SUCCEEDED",
+  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:445a8bb3d15eba802787dc2dab5f8bda116e8c0d49028bb3621bef53590ff8bf",
+  "functions": {
+    "lcm-live-v2-delete": "sha256:445a8bb3d15eba802787dc2dab5f8bda116e8c0d49028bb3621bef53590ff8bf",
+    "lcm-live-v2-reconcile": "sha256:445a8bb3d15eba802787dc2dab5f8bda116e8c0d49028bb3621bef53590ff8bf",
+    "lcm-live-v2-sentinel": "sha256:445a8bb3d15eba802787dc2dab5f8bda116e8c0d49028bb3621bef53590ff8bf",
+    "lcm-live-v2-setup": "sha256:445a8bb3d15eba802787dc2dab5f8bda116e8c0d49028bb3621bef53590ff8bf"
+  },
+  "build_permission_removed": true,
+  "bootstrap_disabled": true,
+  "secret_scan_passed": true,
+  "archive_sha256": "7c91309d05893e58e3775f1ae7892f7522ba37c569a2754e05577d70cddb0036"
+}

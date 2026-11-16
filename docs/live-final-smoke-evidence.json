@@ -1,0 +1,43 @@
+{
+  "mode": "live-oci",
+  "credentials_logged": false,
+  "checks": {
+    "jwt_rejections": true,
+    "replay_same_credentials": true,
+    "idempotency_conflict": true,
+    "status_redacted": true,
+    "owner_bound": true,
+    "actual_key_material_absent_from_logs_state_schedules": true,
+    "active_lease_rollback_upgrade": true,
+    "revocation_confirmed": true
+  },
+  "requests": [
+    {
+      "seconds": 41.524,
+      "status": 201
+    }
+  ],
+  "secret_hygiene_findings": {
+    "runtime_journal": 0,
+    "live.tfstate": 0,
+    "live-outputs.json": 0,
+    "live-config.json": 0,
+    "schedule_payloads": 0
+  },
+  "expiry_observations": [],
+  "lifecycle": {
+    "lease_id": "bb411e38-0786-4d84-afaa-030c1d94f2ed",
+    "deadline": "2026-11-12T18:12:10.291000Z",
+    "first_success_at": null,
+    "observed_denial_at": 1794506302.608784,
+    "delay_beyond_deadline_seconds": 0
+  },
+  "issuance": {
+    "samples": 1,
+    "p95_seconds": null,
+    "target_seconds": 15,
+    "acceptance_measured": false,
+    "maximum_observed_seconds": 41.524
+  },
+  "passed": true
+}
