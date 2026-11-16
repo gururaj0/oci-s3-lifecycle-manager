@@ -1,0 +1,15 @@
+{
+  "checks": {
+    "gateway_rejects_missing_jwt_and_forged_identity": true,
+    "gateway_rejects_invalid_signature": true,
+    "verified_claims_reach_backend": true,
+    "gateway_overwrites_identity_and_scope_spoofing": true,
+    "backend_rejects_profile_escalation": true,
+    "ui_proxy_requires_session_and_fixed_destination": true,
+    "bastion_cannot_bypass_gateway_to_api_listener": true,
+    "backend_rejects_local_forgery_and_forwarded_for": true
+  },
+  "operations": {},
+  "production_ready": false,
+  "passed": true
+}

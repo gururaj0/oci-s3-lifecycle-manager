@@ -129,15 +129,58 @@
     "/health/live": 200,
     "/health/ready": 200,
     "/docs": 200,
-    "anonymous_api_rejected": true,
     "/v1/config": 200,
     "/v1/metrics": 200,
     "/v1/test-setup": 200
   },
   "unit_tests_passed": 69,
   "release_scan_passed": true,
-  "cleaned_runtime_deployed": false,
-  "rollout_blocker": "Automatic approval review requires explicit approval for live build/deployment",
+  "cleaned_runtime_deployed": true,
   "empty_legacy_stack_deleted": true,
-  "empty_legacy_stack_deletion_verified": true
+  "empty_legacy_stack_deletion_verified": true,
+  "rollout_explicitly_approved": true,
+  "rollout": {
+    "job_id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65ialxxf7ulkxerhugtffzhzljo3lnc2bv4pqcqwynde5xyq",
+    "state": "SUCCEEDED",
+    "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:7f7c3e1760196a824c7d63fa2d4ac6703870dd1e519e517978b8022d7d347b09",
+    "functions": {
+      "lcm-live-v2-delete": "sha256:7f7c3e1760196a824c7d63fa2d4ac6703870dd1e519e517978b8022d7d347b09",
+      "lcm-live-v2-reconcile": "sha256:7f7c3e1760196a824c7d63fa2d4ac6703870dd1e519e517978b8022d7d347b09",
+      "lcm-live-v2-sentinel": "sha256:7f7c3e1760196a824c7d63fa2d4ac6703870dd1e519e517978b8022d7d347b09",
+      "lcm-live-v2-setup": "sha256:7f7c3e1760196a824c7d63fa2d4ac6703870dd1e519e517978b8022d7d347b09"
+    },
+    "runtime": {
+      "auth_mode": "gateway",
+      "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:7f7c3e1760196a824c7d63fa2d4ac6703870dd1e519e517978b8022d7d347b09",
+      "separate_listeners": true,
+      "proxy_headers_disabled": true
+    },
+    "gateway_validates_jwt": true,
+    "backend_revalidates_service_jwt": false,
+    "identity_headers_overwritten": true,
+    "api_listener_gateway_nsg_only": true,
+    "temporary_build_permission_removed": true,
+    "production_ready": false,
+    "unit_tests_passed": 69,
+    "private_template_updated": true,
+    "release_archive_sha256": "83481912c8b70e7628755b7258a2817830c852cdfd5833caa5ac4c1bb26ea2f8"
+  },
+  "authentication_checks": {
+    "gateway_rejects_missing_jwt_and_forged_identity": true,
+    "gateway_rejects_invalid_signature": true,
+    "verified_claims_reach_backend": true,
+    "gateway_overwrites_identity_and_scope_spoofing": true,
+    "backend_rejects_profile_escalation": true,
+    "ui_proxy_requires_session_and_fixed_destination": true,
+    "bastion_cannot_bypass_gateway_to_api_listener": true,
+    "backend_rejects_local_forgery_and_forwarded_for": true
+  },
+  "ui_checks_passed": true,
+  "source_verification": {
+    "retired_host_scripts_absent": true,
+    "runtime_hashes": {
+      "service/app.py": "3c2854f713f14319968611826c136afca9316e75f5aed2c67c73646d2b63e961",
+      "shared/config.py": "117c86a2fb627ef2277bace65a5cb68b48ed46ab310a458e1a8ac0248521f257"
+    }
+  }
 }

@@ -32,7 +32,18 @@ def ssh(code,data=None):
 try:
  save(True);apply()
  ssh('sudo tee /opt/lcm-live/identity-source.tar.xz >/dev/null',(ROOT/'release/lcm-live-source.tar.xz').read_bytes())
- result=ssh('sudo /opt/lcm-live/venv/bin/python -',b"import tarfile,subprocess\nwith tarfile.open('/opt/lcm-live/identity-source.tar.xz') as t:t.extractall('/opt/lcm-live/source',filter='data')\nsubprocess.run(['/opt/lcm-live/venv/bin/python','/opt/lcm-live/source/scripts/build_function_image.py'],check=True)\n")
+ result=ssh('sudo /opt/lcm-live/venv/bin/python -',b"""import tarfile,subprocess
+from pathlib import Path
+root=Path('/opt/lcm-live/source')
+with tarfile.open('/opt/lcm-live/identity-source.tar.xz') as t:
+ names=set(t.getnames())
+ # Remove retired source files before extraction; keep runtime state and build manifests.
+ for directory in ('shared','service','scripts','functions','db'):
+  for p in (root/directory).rglob('*'):
+   if p.is_file() and str(p.relative_to(root)) not in names:p.unlink()
+ t.extractall(root,filter='data')
+subprocess.run(['/opt/lcm-live/venv/bin/python','/opt/lcm-live/source/scripts/build_function_image.py'],check=True)
+""")
  (ROOT/'.local/identity-build.log').write_bytes(result.stdout+result.stderr)
  manifest=ssh('sudo cat /opt/lcm-live/source/function-build-manifest.json').stdout
  (ROOT/'release/live-image-manifest.json').write_bytes(manifest)

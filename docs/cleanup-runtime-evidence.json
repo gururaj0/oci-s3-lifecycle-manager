@@ -1,0 +1,7 @@
+{
+  "retired_host_scripts_absent": true,
+  "runtime_hashes": {
+    "service/app.py": "3c2854f713f14319968611826c136afca9316e75f5aed2c67c73646d2b63e961",
+    "shared/config.py": "117c86a2fb627ef2277bace65a5cb68b48ed46ab310a458e1a8ac0248521f257"
+  }
+}

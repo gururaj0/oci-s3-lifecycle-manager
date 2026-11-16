@@ -54,6 +54,6 @@ assert job.lifecycle_state=='SUCCEEDED'
 out={'job_id':job.id,'state':job.lifecycle_state,'image':manifest['image'],'functions':functions,'runtime':host,
  'gateway_validates_jwt':True,'backend_revalidates_service_jwt':False,'identity_headers_overwritten':True,
  'api_listener_gateway_nsg_only':True,'temporary_build_permission_removed':True,
- 'unit_tests_passed':70,'production_ready':False}
+ 'production_ready':False}
 (ROOT/'docs/gateway-auth-deployment.json').write_text(json.dumps(out,indent=2)+'\n')
 print(json.dumps(out,indent=2))

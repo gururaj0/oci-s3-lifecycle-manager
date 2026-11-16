@@ -47,13 +47,17 @@ Validation: 69 unit tests passed; the cleaned live source/package passed the pri
 bearer-token scan. Read-only live checks returned 200 for the UI, liveness, readiness, reference,
 authorized profiles, metrics and test setup; anonymous lifecycle access returned 401.
 
-## Pending runtime rollout
+## Completed runtime rollout
 
-The source cleanup is prepared locally. The running image and published OCI template have not
-been updated. Automatic approval review rejected the build/deployment action because it changes
-live-stack build permissions and publishes an image. Explicit approval is needed to build the
-cleaned image, remove temporary publishing permissions, deploy it to the existing VM/Functions,
-refresh the private template and verify the live flow. No database migration or lease drain is
-part of that rollout. Restarting the UI will require users to sign in again.
+The user approved the rollout after automatic approval review requested explicit authorization.
+The cleaned image is deployed on the existing VM and all four Functions. Temporary image
+publishing permission was removed and database bootstrap stayed disabled. The private Resource
+Manager template was refreshed and its downloaded archive hash verified.
+
+The build now removes retired files from the managed source directories before extraction.
+The running API's source hashes match the cleaned repository; retired host scripts are absent.
+Eight gateway/backend authentication checks and all automated sign-in UI checks passed. These
+checks do not perform the operator's interactive login or repeat the historical S3 expiry suite.
+The UI restart clears browser sessions; sign in with OCI again. Existing leases were preserved.
 
 Actual Unity integration and the previously recorded expiry/propagation acceptance limits remain.
