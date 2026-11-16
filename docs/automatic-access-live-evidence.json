@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "anonymous_denied": true,
+    "read_scope_lists_bucket": true,
+    "read_fixture_returned": true,
+    "foreign_bucket_denied_before_oci": true,
+    "read_scope_cannot_write": true,
+    "write_scope_creates_object": true,
+    "default_put_prevents_overwrite": true,
+    "conditional_overwrite_succeeds": true,
+    "delete_operation_not_exposed": true,
+    "automatic_path_created_no_leases_or_customer_keys": true,
+    "existing_lease_api_preserved": true,
+    "only_regression_test_lease_revoked": true,
+    "owned_test_object_removed": true
+  },
+  "production_ready": false,
+  "passed": true
+}

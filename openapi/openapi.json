@@ -44,6 +44,206 @@
         ]
       }
     },
+    "/v1/bucket-operations": {
+      "post": {
+        "tags": [
+          "Automated bucket access"
+        ],
+        "summary": "Access an authorized bucket automatically",
+        "operationId": "bucket_operation_v1_bucket_operations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BucketOperation"
+              },
+              "example": {
+                "bucket": "lcm-live-v2-sales",
+                "operation": "LIST",
+                "limit": 20
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized operation completed; no credentials in response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "bucket",
+                    "operation",
+                    "selected_profile",
+                    "credential_mode",
+                    "lease_created"
+                  ],
+                  "properties": {
+                    "bucket": {
+                      "type": "string"
+                    },
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "LIST",
+                        "GET",
+                        "PUT"
+                      ]
+                    },
+                    "selected_profile": {
+                      "type": "string"
+                    },
+                    "credential_mode": {
+                      "type": "string",
+                      "enum": [
+                        "oci_workload_identity"
+                      ]
+                    },
+                    "lease_created": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "key": {
+                      "type": "string"
+                    },
+                    "etag": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "size": {
+                      "type": "integer"
+                    },
+                    "content_base64": {
+                      "type": "string",
+                      "contentEncoding": "base64"
+                    },
+                    "next_start": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "objects": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "integer"
+                          },
+                          "etag": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or idempotency key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Identity, scope, profile or ownership not authorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency conflict, issuance pending or credentials no longer replayable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit or pool exhausted; honor Retry-After",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency, cleanup health or issuance failure",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
+          },
+          "412": {
+            "description": "Object exists or ETag no longer matches; inspect before retrying PUT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request or object exceeds size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "description": "Bearer HTTP API. Selects an already-authorized profile and uses the backend OCI workload identity; no S3 credentials or leases are created. LIST is limited to 100 objects with start pagination. GET/PUT are limited to 512 KiB. PUT creates only unless if_match supplies the current ETag. No DELETE, multipart, streaming or native S3 interface."
+      }
+    },
     "/v1/config": {
       "get": {
         "summary": "Config",
@@ -934,6 +1134,95 @@
   },
   "components": {
     "schemas": {
+      "BucketOperation": {
+        "properties": {
+          "bucket": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1,
+            "title": "Bucket"
+          },
+          "operation": {
+            "type": "string",
+            "enum": [
+              "LIST",
+              "GET",
+              "PUT"
+            ],
+            "title": "Operation"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "prefix": {
+            "type": "string",
+            "maxLength": 1024,
+            "title": "Prefix",
+            "default": ""
+          },
+          "start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "default": 100
+          },
+          "content_base64": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 699052
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Base64"
+          },
+          "if_match": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "If Match"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "bucket",
+          "operation"
+        ],
+        "title": "BucketOperation"
+      },
       "CreateLease": {
         "properties": {
           "scope_profile": {

@@ -39,12 +39,24 @@ def install_reference(app, cfg):
         for path, item in spec['paths'].items():
             for method, op in item.items():
                 if method not in ('get','post','delete'):continue
-                op['tags']=['Lease lifecycle' if path.startswith('/v1/leases') and not path.endswith('/tests') else 'Discovery' if path=='/v1/config' else 'Demo diagnostics' if path.startswith('/v1/') else 'Health']
+                op['tags']=['Automated bucket access' if path=='/v1/bucket-operations' else 'Lease lifecycle' if path.startswith('/v1/leases') and not path.endswith('/tests') else 'Discovery' if path=='/v1/config' else 'Demo diagnostics' if path.startswith('/v1/') else 'Health']
                 op['responses'].pop('422',None)
                 if path.startswith('/v1/'):
                     for code,desc in [('400','Invalid input or idempotency key'),('403','Identity, scope, profile or ownership not authorized'),('404','Resource not found'),('409','Idempotency conflict, issuance pending or credentials no longer replayable'),('429','Rate limit or pool exhausted; honor Retry-After'),('503','Dependency, cleanup health or issuance failure')]:
                         op['responses'][code]=response('ApiError',desc)
                     op['responses']['401']={'description':'Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body.'}
+        if '/v1/bucket-operations' in spec['paths']:
+            operation=spec['paths']['/v1/bucket-operations']['post']
+            operation['summary']='Access an authorized bucket automatically'
+            operation['description']='Bearer HTTP API. Selects an already-authorized profile and uses the backend OCI workload identity; no S3 credentials or leases are created. LIST is limited to 100 objects with start pagination. GET/PUT are limited to 512 KiB. PUT creates only unless if_match supplies the current ETag. No DELETE, multipart, streaming or native S3 interface.'
+            operation['requestBody']['content']['application/json']['example']={'bucket':'lcm-live-v2-sales','operation':'LIST','limit':20}
+            operation['responses']['200']={'description':'Authorized operation completed; no credentials in response','content':{'application/json':{'schema':{'type':'object','required':['bucket','operation','selected_profile','credential_mode','lease_created'],'properties':{
+                'bucket':{'type':'string'},'operation':{'type':'string','enum':['LIST','GET','PUT']},'selected_profile':{'type':'string'},
+                'credential_mode':{'type':'string','enum':['oci_workload_identity']},'lease_created':{'type':'boolean','const':False},
+                'key':{'type':'string'},'etag':{'type':['string','null']},'size':{'type':'integer'},'content_base64':{'type':'string','contentEncoding':'base64'},
+                'next_start':{'type':['string','null']},'objects':{'type':'array','items':{'type':'object','properties':{'key':{'type':'string'},'size':{'type':'integer'},'etag':{'type':['string','null']}}}}}}}}}
+            operation['responses']['412']=response('ApiError','Object exists or ETag no longer matches; inspect before retrying PUT')
+            operation['responses']['413']=response('ApiError','Request or object exceeds size limit')
         post=spec['paths']['/v1/leases']['post']
         post['responses']['422']=response('ApiError','Unsupported profile')
         post['summary']='Create a lease or replay the same request'

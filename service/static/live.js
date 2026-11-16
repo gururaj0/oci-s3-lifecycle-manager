@@ -40,7 +40,7 @@ async function refresh(){
   if(!audit.events.length)by('live-events').append(node('p','No lease activity yet.'));
  }catch(e){by('live-status').textContent=e.message}finally{refreshing=false}
 }
-async function connectIdentity(){try{const config=await call('/v1/config');if(config.mode!=='oci')throw new Error('LIVE_OCI_REQUIRED');by('live-profile').replaceChildren();Object.keys(config.profiles).forEach(p=>{const option=node('option',p);option.value=p;by('live-profile').append(option)});await inventory();by('live-create').disabled=false;by('live-status').textContent='Verified identity connected. '+Object.keys(config.profiles).length+' approved profiles.';await refresh()}catch(e){identity='';by('live-create').disabled=true;by('live-status').textContent=e.message}}
+async function connectIdentity(){try{const config=await call('/v1/config');if(config.mode!=='oci')throw new Error('LIVE_OCI_REQUIRED');by('live-profile').replaceChildren();Object.keys(config.profiles).forEach(p=>{const option=node('option',p);option.value=p;by('live-profile').append(option)});await inventory();by('live-create').disabled=false;by('live-status').textContent='Verified identity connected. '+Object.keys(config.profiles).length+' approved profiles.';await refresh();by('auto-bucket').replaceChildren();[...new Set(Object.values(config.profiles).map(p=>p.bucket))].forEach(bucket=>{const option=node('option',bucket);option.value=bucket;by('auto-bucket').append(option)});by('auto-run').disabled=false;by('auto-operation').value='LIST';await automaticAccess()}catch(e){identity='';by('live-create').disabled=true;by('live-status').textContent=e.message}}
 by('connect').onsubmit=async e=>{e.preventDefault();identity=by('bearer').value;by('bearer').value='';await connectIdentity()};
 by('live-issue').onsubmit=async e=>{e.preventDefault();by('live-create').disabled=true;by('live-status').textContent='Creating real OCI credentials and confirming cleanup…';try{response=await call('/v1/leases',{method:'POST',headers:{'Idempotency-Key':crypto.randomUUID()},body:JSON.stringify({scope_profile:by('live-profile').value,ttl_seconds:Number(by('live-ttl').value)})});by('live-access').textContent=response.access_key_id;by('live-secret').value=response.secret_access_key;by('live-secret').type='password';by('live-endpoint').textContent=response.endpoint;by('live-response').textContent=JSON.stringify({lease_id:response.lease_id,scope_profile:response.scope_profile,expires_at:response.expires_at,expiry_mode:response.expiry_mode},null,2);by('live-probe-result').textContent='Run before and after revocation. New keys may take several minutes to reach S3.';by('live-result-panel').hidden=false;by('live-status').textContent='Real OCI credentials created. Your OCI service user and key inventory appear below.';await refresh();await inventory()}catch(e){by('live-status').textContent=e.message}finally{by('live-create').disabled=!identity}};
 by('live-probe').onclick=async()=>{if(!response)return;by('live-probe').disabled=true;by('live-probe-result').textContent='Running actual OCI S3 diagnostic…';try{const result=await call('/v1/leases/'+response.lease_id+'/tests',{method:'POST',body:JSON.stringify({access_key_id:response.access_key_id,secret_access_key:response.secret_access_key,operation:by('live-probe-op').value})});by('live-probe-result').textContent=JSON.stringify(result,null,2);await refresh()}catch(e){by('live-probe-result').textContent=e.message}finally{by('live-probe').disabled=false}};
@@ -67,5 +67,19 @@ async function loadSession(){
  }catch(e){by('live-status').textContent='Unable to check sign-in status.'}
 }
 by('domain-logout').onclick=async()=>{try{await call('/auth/logout',{method:'POST'});location.assign('/')}catch(e){by('domain-session').textContent=e.message}};
-setInterval(()=>{if(identity==='session'&&Date.now()/1000>=sessionExpires){identity='';csrf='';response=null;by('live-clear').click();by('live-create').disabled=true;by('domain-login').hidden=false;by('domain-logout').hidden=true;by('domain-session').textContent='Session expired. Sign in again to continue.'}},1000);
+setInterval(()=>{if(identity==='session'&&Date.now()/1000>=sessionExpires){identity='';csrf='';response=null;by('live-clear').click();by('live-create').disabled=true;by('domain-login').hidden=false;by('domain-logout').hidden=true;by('auto-run').disabled=true;by('auto-result').textContent='Session expired. Sign in again.';by('domain-session').textContent='Session expired. Sign in again to continue.'}},1000);
 loadSession();
+
+async function automaticAccess(){
+ if(!identity)return;by('auto-run').disabled=true;by('auto-result').textContent='Running authorized bucket operation…';
+ try{
+  const operation=by('auto-operation').value,body={bucket:by('auto-bucket').value,operation};
+  if(operation!=='LIST')body.key=by('auto-key').value;
+  if(operation==='PUT')body.content_base64=btoa(String.fromCharCode(...new TextEncoder().encode(by('auto-content').value)));
+  const result=await call('/v1/bucket-operations',{method:'POST',body:JSON.stringify(body)});
+  if(result.content_base64){result.text_preview=new TextDecoder().decode(Uint8Array.from(atob(result.content_base64),c=>c.charCodeAt(0))).slice(0,4000);delete result.content_base64}
+  by('auto-result').textContent=JSON.stringify(result,null,2);
+ }catch(e){by('auto-result').textContent=e.message}finally{by('auto-run').disabled=!identity}
+}
+by('auto-form').onsubmit=e=>{e.preventDefault();automaticAccess()};
+by('auto-operation').onchange=()=>{if(by('auto-operation').value==='PUT')by('auto-key').value='automation/demo-'+crypto.randomUUID()+'.txt';else if(by('auto-operation').value==='GET')by('auto-key').value='quarterly/revenue.csv'};

@@ -1,0 +1,14 @@
+{
+  "deployed": true,
+  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:55bc0ddd19625819019d1233be8e64dc30080675d5e33e5c7224390fff2d4cb8",
+  "unit_tests_passed": 86,
+  "existing_group_statements_retained": 4,
+  "backend_bucket_statements_added": 2,
+  "object_delete_not_granted": true,
+  "api_reference_matches_source": true,
+  "private_template_verified": true,
+  "release_archive_sha256": "8667739a617341db2418c8d98783b95f708646e4e96fa71afa8d7d6eadfd7077",
+  "live_checks_passed": true,
+  "ui_fixture_checks_passed": true,
+  "production_ready": false
+}

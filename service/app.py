@@ -163,6 +163,13 @@ def create_app(lcm=None, worker=True):
         if e.cfg.mode=='oci':healthy=healthy and all(e.cfg.integration_gates.get(k) for k in ('iam_scope','vault_replay','database','scheduler'))
         return JSONResponse({'status':'READY' if healthy else 'PENDING','mode':e.cfg.mode,'production_ready':False}, status_code=200 if healthy else 503)
 
+    from service.bucket_access import BucketOperation, execute as execute_bucket_operation
+
+    @app.post('/v1/bucket-operations', include_in_schema=e.cfg.mode=='oci', tags=['Automated bucket access'])
+    def bucket_operation(body:BucketOperation,request:Request,who=Depends(owner)):
+        if e.cfg.mode!='oci':raise Problem(404,'NOT_FOUND')
+        return execute_bucket_operation(e,who,body,auth.allowed(who),request.state.correlation)
+
     @app.get('/v1/config')
     def config(who=Depends(owner)):
         return {'mode':e.cfg.mode,'region':e.cfg.region,'ttl':{'default':900,'min':e.cfg.ttl_min,'max':e.cfg.ttl_max},

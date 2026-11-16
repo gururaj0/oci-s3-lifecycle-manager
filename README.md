@@ -66,6 +66,14 @@ python3 -m venv .venv
 Open `http://127.0.0.1:8080` and `/docs`. Do not bind a developer server publicly. Config is optional
 JSON via `LCM_CONFIG`; runtime state uses `LCM_STATE_DIR` (default `.local`). Live issuance is gated on recorded capability checks.
 
+## Automatic bucket access
+
+`POST /v1/bucket-operations` accepts a service JWT and `{"bucket":"lcm-live-v2-sales","operation":"LIST"}`.
+The backend selects an authorized profile and uses its OCI workload identity for bounded
+LIST/GET/PUT operations. No credential lease or expiration schedule is created for this path.
+GET/PUT support objects up to 512 KiB; writes are conditional. The UI lists the first authorized
+bucket after sign-in and provides read/create controls. See the Unity guide for the contract.
+
 ## REST
 
 `POST /v1/leases` requires `Authorization: Bearer <RS256 JWT>` and UUID `Idempotency-Key`, with

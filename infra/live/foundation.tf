@@ -63,6 +63,8 @@ resource "oci_identity_policy" "data_scope" {
   name           = "${var.prefix}-data-scope"
   description    = "Bucket-scoped list/read and create/overwrite; deletion excluded"
   statements = [
+    "Allow dynamic-group id ${oci_identity_dynamic_group.issuer.id} to read buckets in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.sales.name}'",
+    "Allow dynamic-group id ${oci_identity_dynamic_group.issuer.id} to {OBJECT_INSPECT, OBJECT_READ, OBJECT_CREATE, OBJECT_OVERWRITE} in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.sales.name}'",
     "Allow group id ${oci_identity_group.scope["sales-read"].id} to read buckets in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.sales.name}'",
     "Allow group id ${oci_identity_group.scope["sales-write"].id} to read buckets in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.sales.name}'",
     "Allow group id ${oci_identity_group.scope["sales-read"].id} to read objects in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.sales.name}'",

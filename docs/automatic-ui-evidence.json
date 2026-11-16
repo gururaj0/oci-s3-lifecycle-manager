@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "fixture_session_only": true,
+  "interactive_oci_signin_not_automated": true,
+  "automatic_list_after_session": true,
+  "get_control_submits_bucket_and_key": true,
+  "no_credential_lease_requested": true,
+  "csrf_forwarded": true,
+  "desktop_mobile_layout": true,
+  "script_errors": []
+}
