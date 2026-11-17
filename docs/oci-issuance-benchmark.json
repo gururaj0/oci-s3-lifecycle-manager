@@ -1,0 +1,75 @@
+{
+  "event": "result",
+  "started_at_utc": "2026-11-17T15:05:11.815933+00:00",
+  "source": "existing private OCI demo VM (also hosts demo backend)",
+  "region": "us-ashburn-1",
+  "route": "public OCI API Gateway HTTPS endpoint",
+  "http_client": "Python requests HTTP/1.1 Session; reused connections where available",
+  "requested_samples": 5,
+  "samples": [
+    {
+      "sample": 1,
+      "credential_response_seconds": 1.7486,
+      "http_status": 201,
+      "delivery_status": "SCHEDULE_PENDING",
+      "finalization_observed_seconds": 48.2619,
+      "test_lease_revoked": true
+    },
+    {
+      "sample": 2,
+      "credential_response_seconds": 1.2884,
+      "http_status": 201,
+      "delivery_status": "SCHEDULE_PENDING",
+      "finalization_observed_seconds": 35.5366,
+      "test_lease_revoked": true
+    },
+    {
+      "sample": 3,
+      "credential_response_seconds": 1.2077,
+      "http_status": 201,
+      "delivery_status": "SCHEDULE_PENDING",
+      "finalization_observed_seconds": 43.5156,
+      "test_lease_revoked": true
+    },
+    {
+      "sample": 4,
+      "credential_response_seconds": 1.2373,
+      "http_status": 201,
+      "delivery_status": "SCHEDULE_PENDING",
+      "finalization_observed_seconds": 61.6519,
+      "test_lease_revoked": true
+    },
+    {
+      "sample": 5,
+      "credential_response_seconds": 1.0975,
+      "http_status": 201,
+      "delivery_status": "SCHEDULE_PENDING",
+      "finalization_observed_seconds": 59.4989,
+      "test_lease_revoked": true
+    }
+  ],
+  "failures": [],
+  "excluded": [
+    "SSH setup",
+    "OAuth token acquisition",
+    "background finalization",
+    "revocation"
+  ],
+  "includes": [
+    "client-to-gateway network",
+    "gateway authentication",
+    "backend authorization and reservation",
+    "IAM key creation",
+    "ADB recording",
+    "credential response transfer"
+  ],
+  "isolated_backend_or_iam_timings_measured": false,
+  "p95_method": "nearest rank; small sample preliminary only",
+  "passed": true,
+  "credential_response_seconds": {
+    "median": 1.2373,
+    "p95": 1.7486,
+    "min": 1.0975,
+    "max": 1.7486
+  }
+}
