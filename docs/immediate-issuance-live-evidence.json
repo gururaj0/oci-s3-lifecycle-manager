@@ -7,21 +7,17 @@
     "only_test_lease_revoked": true
   },
   "timings": {
-    "credentials_returned_seconds": 1.5,
-    "finalization_observed_seconds": 54.25
+    "credentials_returned_seconds": 1.73,
+    "finalization_observed_seconds": 15.36
   },
   "observed_stages": [
     {
       "phase": "CONFIRMING_SCHEDULE",
-      "elapsed_seconds": 1.65
-    },
-    {
-      "phase": "PREPARING_REPLAY",
-      "elapsed_seconds": 39.52
+      "elapsed_seconds": 2.68
     },
     {
       "phase": "ACTIVE",
-      "elapsed_seconds": 54.25
+      "elapsed_seconds": 15.36
     }
   ],
   "passed": true,

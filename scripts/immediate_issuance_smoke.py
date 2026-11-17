@@ -20,6 +20,10 @@ try:
   assert r.status_code==200,r.status_code
   assert credentials['secret_access_key'] not in r.text and credentials['access_key_id'] not in r.text
   phase=r.json()['phase']
+  assert r.json()['lease']['phase']==phase
+  listing=requests.get(base+'/v1/leases',headers=headers,timeout=30);assert listing.status_code==200
+  listed=next(l for l in listing.json()['leases'] if l['lease_id']==lease_id)
+  assert listed['phase'] in ('CONFIRMING_SCHEDULE','PREPARING_REPLAY','ACTIVE')
   if not stages or stages[-1]['phase']!=phase:stages.append({'phase':phase,'elapsed_seconds':round(time.monotonic()-started,2)})
   assert phase not in ('REVOKED','REVOKE_PENDING'),phase
   if phase=='ACTIVE':break

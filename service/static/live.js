@@ -10,6 +10,8 @@ async function call(path,options={}){
  if(!r.ok)throw new Error(data?.error?.code||'DEPENDENCY_UNAVAILABLE');return data;
 }
 function profile(){const p=setup?.profiles[by('live-profile').value];if(p){by('live-bucket').textContent=p.bucket;by('live-operations').textContent=p.operations.join(' · ')}}
+const leaseStages={PREPARING:'Reserving a service user and creating credentials…',CONFIRMING_SCHEDULE:'Key recorded · Confirming expiration cleanup…',PREPARING_REPLAY:'Expiration scheduled · Preparing secure retry storage in Vault…',ACTIVE:'Expiration cleanup and secure retry storage are ready.'};
+function leaseStage(lease){return leaseStages[lease.phase||lease.status]||'Confirming expiration cleanup…'}
 function renderLeases(){
  by('live-rows').replaceChildren();
  leases.forEach(l=>{
@@ -17,6 +19,7 @@ function renderLeases(){
   const user=setup?.service_users.find(u=>u.user_id===l.service_user_id);row.append(node('td',user?.name||l.service_user_id||'—'));
   const state=node('td',l.status.replaceAll('_',' '));
   if(l.status==='ACTIVE'){const seconds=Math.max(0,Math.ceil((Date.parse(l.expires_at)-Date.now())/1000));state.append(node('small',seconds?Math.floor(seconds/60)+'m '+String(seconds%60).padStart(2,'0')+'s remaining':'Cleanup due · access may persist'))}
+  else if(['PREPARING','SCHEDULE_PENDING'].includes(l.status))state.append(node('small',leaseStage(l)));
   else if(l.deleted_at)state.append(node('small','IAM deletion '+new Date(l.deleted_at).toLocaleTimeString()));row.append(state);
   const td=node('td','');if(l.status!=='REVOKED'){const button=node('button','Revoke');button.className='subtle';button.onclick=async()=>{button.disabled=true;try{await call('/v1/leases/'+l.lease_id,{method:'DELETE'});await refresh()}catch(e){by('live-status').textContent=e.message}finally{button.disabled=false}};td.append(button)}row.append(td);by('live-rows').append(row);
  });
@@ -39,7 +42,7 @@ async function refresh(){
     if(['REVOKE_PENDING','REVOKED'].includes(current.status)){
      response=null;by('live-secret').value='';by('live-access').textContent='';by('live-credential-body').hidden=true;
      by('live-issuance-progress').textContent='Lease revoked or revocation in progress. These credentials must no longer be used.';
-    }else by('live-issuance-progress').textContent=current.status==='ACTIVE'?'Credentials available. Expiration cleanup and secure retry storage are ready.':'Credentials available · cleanup setup pending. Background failure will revoke this lease.';
+    }else by('live-issuance-progress').textContent=current.status==='ACTIVE'?'Credentials available. Expiration cleanup and secure retry storage are ready.':'Credentials available · cleanup setup pending. '+leaseStage(current);
    }
   }
   by('live-active').textContent=metrics.states.ACTIVE||0;

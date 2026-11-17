@@ -51,6 +51,7 @@ class Lifecycle:
     def view(self, r):
         result = {('lease_id' if k == 'id' else 'status' if k == 'state' else 'scope_profile' if k == 'profile' else k):
                 utc(r[k]) if k.endswith('_at') else r[k] for k in SAFE}
+        result['phase']=('PREPARING_REPLAY' if r['schedule_id'] else 'CONFIRMING_SCHEDULE') if r['state']=='SCHEDULE_PENDING' else r['state']
         if self.cfg.mode=='oci':result['service_user_id']=r['user_id']
         return result
 

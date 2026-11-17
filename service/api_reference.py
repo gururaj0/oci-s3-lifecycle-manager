@@ -22,6 +22,7 @@ def install_reference(app, cfg):
         schemas['LeaseMetadata'] = {'type':'object','required':['lease_id','status','scope_profile'], 'properties':{
             'lease_id':{'type':'string','format':'uuid'},
             'status':{'type':'string','enum':['PREPARING','SCHEDULE_PENDING','ACTIVE','REVOKE_PENDING','REVOKED']},
+            'phase':{'type':'string','enum':['PREPARING','CONFIRMING_SCHEDULE','PREPARING_REPLAY','ACTIVE','REVOKE_PENDING','REVOKED'],'description':'Committed issuance stage; exposes no credentials.'},
             'scope_profile':{'type':'string'},'service_user_id':{'type':'string'},
             **{k:{'type':'integer'} for k in ['profile_version','requested_ttl','generation']},
             **{k:{'type':['string','null'],'format':'date-time'} for k in ['created_at','key_created_at','expires_at','delivered_at','deleted_at']},

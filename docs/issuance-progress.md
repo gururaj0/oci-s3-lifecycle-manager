@@ -8,7 +8,9 @@ it is not a zero-latency guarantee or an assertion that S3 propagation has compl
 
 The **Lease credentials · REAL OCI** panel appears above **Your leases** immediately and displays
 the masked secret as soon as that response arrives. It labels cleanup setup as pending. The
-existing lease refresh updates the panel on completion and clears the displayed secret if
+existing lease refresh shows the committed stage beneath the lease Status and in the credential
+panel: key recorded / confirming expiration cleanup, then expiration scheduled / preparing secure
+retry storage in Vault, then ACTIVE. It updates the panel on completion and clears the displayed secret if
 revocation is pending or complete. Dismissing the panel does not cancel the backend request.
 
 After sending the response, a server background task confirms the expiration schedule and stores

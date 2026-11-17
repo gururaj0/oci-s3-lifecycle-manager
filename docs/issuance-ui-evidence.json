@@ -7,6 +7,7 @@
   "elapsed_time_shown": true,
   "secret_shown_while_setup_pending": true,
   "background_completion_shown": true,
+  "pending_stages_in_lease_status_and_credentials_panel": true,
   "revocation_clears_secret": true,
   "secret_masked_on_success": true,
   "dismissed_request_cannot_redisplay_secret": true,

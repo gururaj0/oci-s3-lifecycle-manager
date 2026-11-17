@@ -1533,6 +1533,18 @@
               "REVOKED"
             ]
           },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "PREPARING",
+              "CONFIRMING_SCHEDULE",
+              "PREPARING_REPLAY",
+              "ACTIVE",
+              "REVOKE_PENDING",
+              "REVOKED"
+            ],
+            "description": "Committed issuance stage; exposes no credentials."
+          },
           "scope_profile": {
             "type": "string"
           },

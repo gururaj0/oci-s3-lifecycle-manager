@@ -215,9 +215,8 @@ def create_app(lcm=None, worker=True):
                 (who['issuer'],who['subject'],str(request_id))).fetchone()
         if not row:raise Problem(404,'LEASE_REQUEST_NOT_FOUND')
         if row['profile'] not in auth.allowed(who):raise Problem(403,'PROFILE_FORBIDDEN')
-        state=row['state']
-        phase=('PREPARING_REPLAY' if row['schedule_id'] else 'CONFIRMING_SCHEDULE') if state=='SCHEDULE_PENDING' else state
-        return {'request_id':str(request_id),'phase':phase,'lease':e.view(row)}
+        lease=e.view(row)
+        return {'request_id':str(request_id),'phase':lease['phase'],'lease':lease}
 
     @app.get('/v1/leases/{lease_id}')
     def get(lease_id:uuid.UUID,who=Depends(owner)):

@@ -1,9 +1,9 @@
 {
-  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:9a5d961331f30f3ece55d775c3da3cbb150c30814828039fe76271af3336f660",
-  "tagged_image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker:v020-2c33f3560f7b",
-  "digest": "sha256:9a5d961331f30f3ece55d775c3da3cbb150c30814828039fe76271af3336f660",
+  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:dcd45978422ac4a3ac210610342dc5bbc646817384dacd0c877d9b8fa797956e",
+  "tagged_image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker:v020-6616a29abee3",
+  "digest": "sha256:dcd45978422ac4a3ac210610342dc5bbc646817384dacd0c877d9b8fa797956e",
   "base_image": "docker.io/library/python@sha256:0f086103b026048cc50cb5da25ec435c023c5241a83fc44daea593377abc61c4",
-  "source_sha256": "2c33f3560f7b68909ddbdba101ec9c94504022e8572b90f168e52384a9730b1e",
+  "source_sha256": "6616a29abee38194b51885a74b7632abc51c3d19d238a9af16fd42998abe366b",
   "builder": "OCI private VM / instance principal",
   "dependency_scan": "passed"
 }

@@ -2,6 +2,6 @@
   "service/static/live.html": true,
   "service/static/live.js": true,
   "openapi_matches": true,
-  "immediate_mode_published": true,
+  "lease_stage_published": true,
   "ready": true
 }

@@ -18,6 +18,9 @@ def test_progress_is_owner_bound_and_never_returns_credentials(env,caller):
         with e.db.tx() as c:c.execute('UPDATE leases SET state=?,schedule_id=? WHERE id=?',(state,schedule,credentials['lease_id']))
         result=client.get(path,headers=caller)
         assert result.json()['phase']==expected
+        assert result.json()['lease']['phase']==expected
+        listed=client.get('/v1/leases',headers=caller).json()['leases']
+        assert next(l for l in listed if l['lease_id']==credentials['lease_id'])['phase']==expected
         assert credentials['secret_access_key'] not in result.text
 
 
