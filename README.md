@@ -53,12 +53,17 @@ Key creation/deletion permissions remain separate. This tradeoff was explicitly 
 Prefix cleanup uses the Identity Domains SCIM API to remove only the matched user from
 the matched group, verifies both OCIDs, and confirms membership absence through IAM.
 
-Validation: 119 automated tests pass. The unassisted live run passed all nine prefix
+Validation: 122 automated tests pass. The unassisted live run passed all nine prefix
 isolation/lifecycle checks, with IAM key and membership absence observed 6.48 seconds
 after TTL. See [live evidence](docs/prefix-live-evidence.json) and
 [negative API checks](docs/prefix-negative-evidence.json). The delete Function also
 passed a separate cleanup test under its resource principal; see
 [Function evidence](docs/prefix-function-evidence.json).
+
+Live S3 diagnostics follow the returned lease prefix (including case). They default
+to LIST for prefix leases, suggest returned object keys for GET, and reject GET keys
+outside that prefix. For an empty prefix, a write lease can PUT its dedicated test
+object and then GET it; read-only leases need an existing object to test GET.
 
 ## Live demo
 

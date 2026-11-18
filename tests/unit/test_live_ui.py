@@ -73,3 +73,33 @@ def test_live_metrics_and_audit_are_owner_bound(env,caller):
     assert events and all(e['lease_id']!=other for e in events)
     assert client.get('/v1/metrics').status_code==401
     assert client.get('/v1/audit').status_code==401
+
+
+def test_monthly_diagnostic_lists_and_reads_only_requested_prefix(env,monkeypatch):
+    owner,payload=lease(env);e=env[0];e.cfg.prefix_enabled=True
+    monkeypatch.setattr(e,'prefix_grant',lambda _: {'bucket':'sales-demo','prefix':'Monthly/','operations':'["GET","LIST"]'})
+    calls=[]
+    class Client:
+        def list_objects_v2(self,**kw):
+            calls.append(kw);return {'Contents':[{'Key':'Monthly/report.csv'}],'ResponseMetadata':{'HTTPStatusCode':200}}
+        def get_object(self,**kw):
+            calls.append(kw);return {'Body':io.BytesIO(b'customer contents'),'ResponseMetadata':{'HTTPStatusCode':200}}
+        def close(self):pass
+    monkeypatch.setattr('service.live_tests.boto3.client',lambda *a,**k:Client())
+    body=SimpleNamespace(access_key_id=payload['access_key_id'],secret_access_key='secret',operation='LIST')
+    result=run_test(e,owner,payload['lease_id'],body)
+    assert result['object_names']==['Monthly/report.csv'] and calls[-1]['Prefix']=='Monthly/'
+    body.operation='GET';body.object_name='Monthly/report.csv'
+    result=run_test(e,owner,payload['lease_id'],body)
+    assert calls[-1]['Key']=='Monthly/report.csv' and result['matches_expectation']
+    assert 'customer contents' not in json.dumps(result)
+
+
+@pytest.mark.parametrize('key,code',[(None,'OBJECT_NAME_REQUIRED'),('quarterly/revenue.csv','OBJECT_OUTSIDE_LEASE_PREFIX')])
+def test_prefix_diagnostic_rejects_missing_or_foreign_read_key(env,monkeypatch,key,code):
+    owner,payload=lease(env);e=env[0];e.cfg.prefix_enabled=True
+    monkeypatch.setattr(e,'prefix_grant',lambda _: {'bucket':'sales-demo','prefix':'Monthly/','operations':'["GET","LIST"]'})
+    monkeypatch.setattr('service.live_tests.boto3.client',lambda *a,**k:pytest.fail('Unexpected S3 request'))
+    body=SimpleNamespace(access_key_id=payload['access_key_id'],secret_access_key='secret',operation='GET',object_name=key)
+    with pytest.raises(Problem) as error:run_test(e,owner,payload['lease_id'],body)
+    assert error.value.code==code

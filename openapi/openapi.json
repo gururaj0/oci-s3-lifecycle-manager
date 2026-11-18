@@ -1461,6 +1461,19 @@
             ],
             "title": "Operation",
             "default": "GET"
+          },
+          "object_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1024,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Name"
           }
         },
         "additionalProperties": false,

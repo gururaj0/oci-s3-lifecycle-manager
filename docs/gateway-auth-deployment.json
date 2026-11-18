@@ -1,16 +1,16 @@
 {
-  "job_id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65iaclf7kquk2pxtvgg2vfydbuffmjmythjnqeups7qucgba",
+  "job_id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65iaw4g4reu3a3r4a34dxgtchlrp3xgedtvqomztfhftonna",
   "state": "SUCCEEDED",
-  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
+  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:3d21067c7678180919b81c6785b45200fd2dd4a12bb51a24103fac25acaa1bb8",
   "functions": {
-    "lcm-live-v2-delete": "sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
-    "lcm-live-v2-reconcile": "sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
-    "lcm-live-v2-sentinel": "sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
-    "lcm-live-v2-setup": "sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79"
+    "lcm-live-v2-delete": "sha256:3d21067c7678180919b81c6785b45200fd2dd4a12bb51a24103fac25acaa1bb8",
+    "lcm-live-v2-reconcile": "sha256:3d21067c7678180919b81c6785b45200fd2dd4a12bb51a24103fac25acaa1bb8",
+    "lcm-live-v2-sentinel": "sha256:3d21067c7678180919b81c6785b45200fd2dd4a12bb51a24103fac25acaa1bb8",
+    "lcm-live-v2-setup": "sha256:3d21067c7678180919b81c6785b45200fd2dd4a12bb51a24103fac25acaa1bb8"
   },
   "runtime": {
     "auth_mode": "gateway",
-    "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
+    "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:3d21067c7678180919b81c6785b45200fd2dd4a12bb51a24103fac25acaa1bb8",
     "separate_listeners": true,
     "proxy_headers_disabled": true
   },
@@ -20,7 +20,7 @@
   "api_listener_gateway_nsg_only": true,
   "temporary_build_permission_removed": true,
   "production_ready": false,
-  "unit_tests_passed": 119,
+  "unit_tests_passed": 122,
   "private_template_updated": true,
-  "release_archive_sha256": "e688b28f271227556a1e56fb7421f2048e345f9b5e99c8bb3646ebb4b3ff1b30"
+  "release_archive_sha256": "0bac689468c77e8f5bb51b5bf1021d729b34a13fb227832d0738183503fc6203"
 }

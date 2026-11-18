@@ -53,6 +53,7 @@ class LiveTest(BaseModel):
     access_key_id: str = Field(min_length=1,max_length=128)
     secret_access_key: str = Field(min_length=1,max_length=256,repr=False)
     operation: Literal['GET','LIST','PUT','DELETE','FOREIGN'] = 'GET'
+    object_name: str | None = Field(default=None,min_length=1,max_length=1024)
 
 
 def create_app(lcm=None, worker=True):

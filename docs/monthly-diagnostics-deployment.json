@@ -1,0 +1,8 @@
+{
+  "service/static/live.html": true,
+  "service/static/live.js": true,
+  "object_selector_in_live_schema": true,
+  "monthly_browser_regression_passed": true,
+  "automated_tests_passed": 122,
+  "active_monthly_lease_available_for_live_probe": false
+}

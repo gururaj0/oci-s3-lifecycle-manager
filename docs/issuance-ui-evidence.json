@@ -13,5 +13,6 @@
   "dismissed_request_cannot_redisplay_secret": true,
   "desktop_mobile_layout": true,
   "prefix_request_controls": true,
+  "monthly_prefix_diagnostics": true,
   "script_errors": []
 }

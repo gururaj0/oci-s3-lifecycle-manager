@@ -18,6 +18,13 @@ def run_test(engine, owner, lease_id, body):
     operations=json.loads(grant['operations']) if grant else profile['operations']
     probe_key=prefix+'lcm-probe-'+lease_id+'.txt' if grant else 'diagnostics/'+lease_id+'.txt'
     read_key=('quarterly/revenue.csv' if not grant or prefix=='quarterly/' else probe_key)
+    selected=getattr(body,'object_name',None)
+    if selected is not None:
+        if not grant or not selected.startswith(prefix) or selected==prefix:
+            raise Problem(400,'OBJECT_OUTSIDE_LEASE_PREFIX')
+        read_key=selected
+    if grant and body.operation=='GET' and not selected and prefix!='quarterly/':
+        raise Problem(400,'OBJECT_NAME_REQUIRED')
     endpoint = 'https://' + engine.cfg.namespace + '.compat.objectstorage.' + engine.cfg.region + '.oci.customer-oci.com'
     client = boto3.client('s3', endpoint_url=endpoint, region_name=engine.cfg.region,
         aws_access_key_id=body.access_key_id, aws_secret_access_key=body.secret_access_key,
@@ -25,20 +32,23 @@ def run_test(engine, owner, lease_id, body):
                       connect_timeout=5, read_timeout=15, retries={'max_attempts': 0}))
     operation = body.operation
     expected = lease['state'] != 'REVOKED' and operation in operations
-    result = {'mode': 'oci', 'operation': operation, 'expected_access': 'ALLOW' if expected else 'DENY'}
+    result = {'mode': 'oci', 'operation': operation, 'expected_access': 'ALLOW' if expected else 'DENY','bucket':bucket,'prefix':prefix}
     try:
         if operation == 'GET':
+            result['object_name']=read_key
             response = client.get_object(Bucket=bucket, Key=read_key)
             try:
                 data = response['Body'].read(4096)
-                result['fixture_verified'] = data.startswith(b'quarter,revenue\n') if read_key=='quarterly/revenue.csv' else data==b'LCM dedicated diagnostic fixture\n'
+                if not selected:result['fixture_verified'] = data.startswith(b'quarter,revenue\n') if read_key=='quarterly/revenue.csv' else data==b'LCM dedicated diagnostic fixture\n'
                 result['bytes_checked'] = len(data)
             finally:
                 response['Body'].close()
         elif operation == 'LIST':
             response = client.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=5)
             result['objects_returned'] = len(response.get('Contents', []))
+            result['object_names'] = [item['Key'] for item in response.get('Contents', [])]
         elif operation == 'PUT':
+            result['object_name']=probe_key
             response = client.put_object(Bucket=bucket, Key=probe_key,
                                          Body=b'LCM dedicated diagnostic fixture\n')
         elif operation == 'DELETE':
