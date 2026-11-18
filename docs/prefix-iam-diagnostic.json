@@ -1,0 +1,21 @@
+{
+  "temporary_group_operation_condition_removed": true,
+  "runtime_membership_result": "404 NotAuthorizedOrNotFound: PATCH request failed",
+  "original_policy_restored": true,
+  "operator_membership_succeeded": true,
+  "diagnostic_membership_removed": true,
+  "live_prefix_acceptance_passed": true,
+  "expanded_group_and_user_operation_diagnostic": {
+    "add": "succeeded",
+    "runtime_remove": "429 TooManyRequests",
+    "operator_cleanup_verified": true,
+    "original_policy_restored": true
+  },
+  "user_only_relaxation": "failed",
+  "explicit_update_operation_names": "failed",
+  "proposed_permanent_change_applied": true,
+  "domain_api_removal_verified": true,
+  "legacy_remove_proxy_failed": true,
+  "runtime_reconciliation_seconds": 30,
+  "final_cleanup_unassisted": true
+}

@@ -12,32 +12,37 @@ def run_test(engine, owner, lease_id, body):
         raise Problem(403, 'NOT_OWNER')
     engine.rate(owner)
     profile = engine.cfg.profiles[lease['profile']]
-    bucket = profile['bucket']
+    grant=engine.prefix_grant(lease_id) if engine.cfg.prefix_enabled else None
+    bucket = grant['bucket'] if grant else profile['bucket']
+    prefix=grant['prefix'] if grant else ''
+    operations=json.loads(grant['operations']) if grant else profile['operations']
+    probe_key=prefix+'lcm-probe-'+lease_id+'.txt' if grant else 'diagnostics/'+lease_id+'.txt'
+    read_key=('quarterly/revenue.csv' if not grant or prefix=='quarterly/' else probe_key)
     endpoint = 'https://' + engine.cfg.namespace + '.compat.objectstorage.' + engine.cfg.region + '.oci.customer-oci.com'
     client = boto3.client('s3', endpoint_url=endpoint, region_name=engine.cfg.region,
         aws_access_key_id=body.access_key_id, aws_secret_access_key=body.secret_access_key,
         config=Config(signature_version='s3v4', s3={'addressing_style': 'path'},
                       connect_timeout=5, read_timeout=15, retries={'max_attempts': 0}))
     operation = body.operation
-    expected = lease['state'] != 'REVOKED' and operation in profile['operations']
+    expected = lease['state'] != 'REVOKED' and operation in operations
     result = {'mode': 'oci', 'operation': operation, 'expected_access': 'ALLOW' if expected else 'DENY'}
     try:
         if operation == 'GET':
-            response = client.get_object(Bucket=bucket, Key='quarterly/revenue.csv')
+            response = client.get_object(Bucket=bucket, Key=read_key)
             try:
                 data = response['Body'].read(4096)
-                result['fixture_verified'] = data.startswith(b'quarter,revenue\n')
+                result['fixture_verified'] = data.startswith(b'quarter,revenue\n') if read_key=='quarterly/revenue.csv' else data==b'LCM dedicated diagnostic fixture\n'
                 result['bytes_checked'] = len(data)
             finally:
                 response['Body'].close()
         elif operation == 'LIST':
-            response = client.list_objects_v2(Bucket=bucket, MaxKeys=5)
+            response = client.list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=5)
             result['objects_returned'] = len(response.get('Contents', []))
         elif operation == 'PUT':
-            response = client.put_object(Bucket=bucket, Key='diagnostics/' + lease_id + '.txt',
+            response = client.put_object(Bucket=bucket, Key=probe_key,
                                          Body=b'LCM dedicated diagnostic fixture\n')
         elif operation == 'DELETE':
-            response = client.delete_object(Bucket=bucket, Key='diagnostics/delete-denied.txt')
+            response = client.delete_object(Bucket=bucket, Key=probe_key if grant else 'diagnostics/delete-denied.txt')
         else:  # FOREIGN is a fixed existing fixture outside both profiles.
             response = client.get_object(Bucket=engine.cfg.deployment_id + '-foreign', Key='negative-scope.txt')
             response['Body'].close()

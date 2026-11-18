@@ -18,7 +18,7 @@ async def main():
     await r.fulfill(body=target.read_bytes(),content_type=mimetypes.guess_type(target)[0] or 'text/plain');return
    if path=='/auth/session':data={'enabled':True,'authenticated':True,'csrf':'fixture','expires_at':time.time()+600,'login_subject':'fixture','connector_subject':'fixture','issuer':'fixture'}
    elif path=='/health/ready':data={'status':'READY','mode':'oci'}
-   elif path.endswith('/config'):data={'mode':'oci','profiles':profile}
+   elif path.endswith('/config'):data={'mode':'oci','profiles':profile,'prefix_enabled':True}
    elif path.endswith('/test-setup'):data={'profiles':profile,'service_users':[],'read_object':'fixture','foreign_bucket':'foreign','foreign_object':'fixture','delete_test_object':'fixture'}
    elif path.endswith('/metrics'):data={'states':{},'pools':[],'overdue':0,'healthy':True,'heartbeat_at':None}
    elif path.endswith('/audit'):data={'events':[]}
@@ -28,6 +28,8 @@ async def main():
    elif path.endswith('/leases') and r.request.method=='POST':
     idem=r.request.headers['idempotency-key'];requested.set();await finish.wait()
     assert r.request.post_data_json['delivery_mode']=='immediate'
+    assert r.request.post_data_json['prefix']=='quarterly/' and r.request.post_data_json['bucket']=='sales-demo'
+    assert 'scope_profile' not in r.request.post_data_json
     data={'status':'SCHEDULE_PENDING','lease_id':'fixture-lease','access_key_id':'fixture-access','secret_access_key':'fixture-secret','endpoint':'https://s3.test','scope_profile':'sales-read','expires_at':'2030-01-01T00:00:00Z','expiry_mode':'managed_key_deletion'}
    elif path.endswith('/leases'):data={'leases':([{'lease_id':'fixture-lease','scope_profile':'sales-read','status':lease_state,'phase':phase,'expires_at':'2030-01-01T00:00:00Z'}] if lease_state else [])}
    else:raise AssertionError(path)
@@ -74,6 +76,6 @@ async def main():
   finish.set();await expect(page.locator('#live-create')).to_be_enabled()
   await expect(page.locator('#live-result-panel')).to_be_hidden();await expect(page.locator('#live-secret')).to_have_value('')
   assert not errors;await browser.close()
- result={'passed':True,'synthetic_responses':True,'panel_visible_before_create_response':True,'panel_above_lease_table':True,'committed_progress_stages_render':True,'elapsed_time_shown':True,'secret_shown_while_setup_pending':True,'background_completion_shown':True,'pending_stages_in_lease_status_and_credentials_panel':True,'revocation_clears_secret':True,'secret_masked_on_success':True,'dismissed_request_cannot_redisplay_secret':True,'desktop_mobile_layout':True,'script_errors':errors}
+ result={'passed':True,'synthetic_responses':True,'panel_visible_before_create_response':True,'panel_above_lease_table':True,'committed_progress_stages_render':True,'elapsed_time_shown':True,'secret_shown_while_setup_pending':True,'background_completion_shown':True,'pending_stages_in_lease_status_and_credentials_panel':True,'revocation_clears_secret':True,'secret_masked_on_success':True,'dismissed_request_cannot_redisplay_secret':True,'desktop_mobile_layout':True,'prefix_request_controls':True,'script_errors':errors}
  (ROOT/'docs/issuance-ui-evidence.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result))
 asyncio.run(main())

@@ -9,7 +9,7 @@ from shared.oracle_ledger import Row,Connection
 def error(status):return oci.exceptions.ServiceError(status,'Test',{},'redacted')
 
 def cloud():
-    c=OCICloud.__new__(OCICloud);c.managed={'managed'};c.cfg=N(deployment_id='deploy')
+    c=OCICloud.__new__(OCICloud);c.managed={'managed'};c.prefix_users=set();c.cfg=N(deployment_id='deploy')
     c.identity=Mock();return c
 
 

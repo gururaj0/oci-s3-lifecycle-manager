@@ -12,5 +12,6 @@
   "secret_masked_on_success": true,
   "dismissed_request_cannot_redisplay_secret": true,
   "desktop_mobile_layout": true,
+  "prefix_request_controls": true,
   "script_errors": []
 }

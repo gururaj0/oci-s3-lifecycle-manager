@@ -15,7 +15,7 @@ from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.openapi.docs import get_swagger_ui_html
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from shared.auth import Auth
 from shared.errors import Problem
 from shared.runtime import engine as default_engine
@@ -23,10 +23,21 @@ from service.s3 import handle_s3
 
 class CreateLease(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
-    scope_profile: str = Field(min_length=1,max_length=80)
+    scope_profile: str | None = Field(default=None,min_length=1,max_length=80)
+    bucket: str | None = Field(default=None,max_length=256)
+    prefix: str | None = Field(default=None,max_length=240)
+    operations: list[Literal['GET','LIST','PUT']] | None = None
     ttl_seconds: int = 900
     client_request_id: str | None = Field(default=None,max_length=120)
     delivery_mode: Literal['confirmed','immediate'] = 'confirmed'
+
+    @model_validator(mode='after')
+    def request_scope(self):
+        folder=any(v is not None for v in (self.bucket,self.prefix,self.operations))
+        if folder:
+            if self.scope_profile is not None or not self.bucket or not self.prefix or not self.operations:raise ValueError('Provide bucket, prefix and operations without scope_profile')
+        elif not self.scope_profile:raise ValueError('Scope required')
+        return self
 
 class Probe(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -175,7 +186,7 @@ def create_app(lcm=None, worker=True):
     def config(who=Depends(owner)):
         return {'mode':e.cfg.mode,'region':e.cfg.region,'ttl':{'default':900,'min':e.cfg.ttl_min,'max':e.cfg.ttl_max},
                 'profiles':{k:v for k,v in e.cfg.profiles.items() if k in auth.allowed(who)},
-                'expiry_mode':'managed_key_deletion','replay_seconds':e.cfg.replay_seconds,
+                'expiry_mode':'managed_key_deletion','replay_seconds':e.cfg.replay_seconds,'prefix_enabled':e.cfg.prefix_enabled,
                 'identity':{k:who[k] for k in ('issuer','subject','expires_at') if k in who}}
 
     @app.post('/v1/leases')
@@ -187,13 +198,17 @@ def create_app(lcm=None, worker=True):
             uuid.UUID(idem)
         except ValueError:
             raise Problem(400,'INVALID_IDEMPOTENCY_KEY') from None
-        if body.scope_profile not in e.cfg.profiles:
-            raise Problem(422,'UNSUPPORTED_SCOPE')
-        if body.scope_profile not in auth.allowed(who):
-            raise Problem(403,'PROFILE_FORBIDDEN')
+        data=body.model_dump()
+        if body.prefix:
+            from shared.prefix_access import resolve
+            data=resolve(e.cfg,data,auth.allowed(who))
+        else:
+            if e.cfg.prefix_enabled:raise Problem(400,'PREFIX_REQUIRED')
+            for k in ('bucket','prefix','operations'):data.pop(k)
+            if body.scope_profile not in e.cfg.profiles:raise Problem(422,'UNSUPPORTED_SCOPE')
+            if body.scope_profile not in auth.allowed(who):raise Problem(403,'PROFILE_FORBIDDEN')
         # Use an operator-configured public URL, never arbitrary Host/X-Forwarded-Host.
         endpoint=('https://'+e.cfg.namespace+'.compat.objectstorage.'+e.cfg.region+'.oci.customer-oci.com') if e.cfg.mode=='oci' else (e.cfg.public_url or str(request.base_url).rstrip('/'))+'/mock-s3'
-        data=body.model_dump()
         immediate=data['delivery_mode']=='immediate'
         if not immediate:data.pop('delivery_mode')  # Preserve existing idempotency hashes.
         status,payload=e.create(who,data,idem,request.state.correlation,endpoint,defer_setup=immediate)
@@ -239,7 +254,8 @@ def create_app(lcm=None, worker=True):
         if e.cfg.mode!='oci':raise Problem(404,'NOT_FOUND')
         allowed=auth.allowed(who)
         users=[]
-        for profile,ids in e.cfg.service_users.items():
+        pools=e.cfg.prefix_service_users if e.cfg.prefix_enabled else e.cfg.service_users
+        for profile,ids in pools.items():
             if profile not in allowed:continue
             for uid in ids:
                 user=e.cloud.identity.get_user(uid).data
@@ -254,7 +270,7 @@ def create_app(lcm=None, worker=True):
     def live_metrics(who=Depends(owner)):
         allowed=auth.allowed(who)
         result=e.metrics()
-        result['pools']=[p for p in result['pools'] if p['profile'] in allowed]
+        result['pools']=[p for p in result['pools'] if p['profile'].removeprefix('prefix:') in allowed and (not e.cfg.prefix_enabled or p['profile'].startswith('prefix:'))]
         with e.db.connect() as c:
             result['states']={r[0]:r[1] for r in c.execute('SELECT state,COUNT(*) FROM leases WHERE issuer=? AND subject=? GROUP BY state',(who['issuer'],who['subject']))}
         return result

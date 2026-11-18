@@ -1,0 +1,1 @@
+CREATE TABLE lcm_prefix_grants(lease_id VARCHAR2(36) PRIMARY KEY REFERENCES lcm_leases(id),bucket VARCHAR2(256) NOT NULL,prefix VARCHAR2(512) NOT NULL,operations VARCHAR2(100) NOT NULL,group_id VARCHAR2(255),policy_id VARCHAR2(255),membership_id VARCHAR2(255));

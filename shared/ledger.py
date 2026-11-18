@@ -42,6 +42,9 @@ CREATE TABLE IF NOT EXISTS audit (
 CREATE TABLE IF NOT EXISTS control (id TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS rate_buckets (id TEXT PRIMARY KEY, minute INTEGER NOT NULL, count INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS objects (bucket TEXT, name TEXT, content BLOB, PRIMARY KEY(bucket,name));
+CREATE TABLE IF NOT EXISTS prefix_grants (
+ lease_id TEXT PRIMARY KEY REFERENCES leases(id), bucket TEXT NOT NULL, prefix TEXT NOT NULL,
+ operations TEXT NOT NULL, group_id TEXT, policy_id TEXT, membership_id TEXT);
 CREATE INDEX IF NOT EXISTS leases_cleanup ON leases(state,expires_at,next_retry);
 '''
 

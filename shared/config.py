@@ -29,6 +29,9 @@ class Config:
     service_users: dict = field(default_factory=dict)
     functions: dict = field(default_factory=dict)
     integration_gates: dict = field(default_factory=dict)
+    prefix_enabled: bool = False
+    prefix_service_users: dict = field(default_factory=dict)
+    prefix_scope_limit: int = 64
     pool_size: int = 2
     ttl_min: int = 300
     ttl_max: int = 3600

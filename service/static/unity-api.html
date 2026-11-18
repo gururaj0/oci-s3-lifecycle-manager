@@ -3,7 +3,12 @@
 <body><main>
 <nav><a href="/">Live demo</a><a href="/docs">Interactive API reference</a><a href="/openapi.json" download="oci-s3-lifecycle-openapi.json">Download OpenAPI</a><a href="/static/unity_client.py" download>Python example</a></nav>
 <header><p>OCI S3 Credential Lifecycle Manager · API v0.2.0</p><h1>Unity connector integration guide</h1><p>Use a bearer-authenticated HTTP request for automatic bucket access, or obtain a credential lease when your connector needs direct S3 access.</p></header>
-<section id="automatic"><h2>Automatic bucket access · recommended HTTP path</h2><p>After onboarding and obtaining a service JWT as described below, send the bucket and operation. The backend selects a profile that the connector identity and token scopes already authorize. Object Storage applies the backend workload identity’s bucket-restricted IAM permissions.</p><pre><code>POST /v1/bucket-operations
+<section id="prefix"><h2>Dynamic folder credentials · Unity S3 path</h2><p>Send an authorized bucket, a literal folder prefix ending in slash, requested operations, and TTL. The backend selects an approved profile from your identity and OAuth scopes; it does not accept arbitrary policy text or user IDs.</p><pre><code>POST /v1/leases
+Authorization: Bearer &lt;access_token&gt;
+Idempotency-Key: &lt;persisted UUID&gt;
+Content-Type: application/json
+
+{"bucket":"lcm-live-v2-sales","prefix":"quarterly/","operations":["GET","LIST"],"ttl_seconds":300,"delivery_mode":"immediate"}</code></pre><p>Do not include scope_profile with a prefix request. The service creates/reuses a deployment-owned group and policy for the bucket/prefix/operations, allocates an isolated service user, adds temporary membership, and creates a key. ADB records the grant before credentials return. The response includes bucket, prefix and operations. Scheduling and Vault replay storage complete in the background.</p><p>TTL cleanup deletes the key and removes membership before releasing the user. Empty prefix groups/policies remain reusable; the demo caps distinct scopes at 64. When prefix access is enabled, profile-only issuance returns PREFIX_REQUIRED. Existing legacy leases can still finish and be revoked. The new prefix pool contains two read and two write users; users are allocated dynamically, not created per request.</p><p>Current connector authorization covers prefixes within its configured demo bucket. Operators can narrow allowed_prefixes per profile. Empty prefixes, wildcards, traversal segments, quotes and unsupported characters are rejected. IAM pattern matching has OCI semantics, not filesystem permissions. LIST is bucket-level permission and can reveal other names; a Prefix parameter is only a filter. Policy/membership propagation can take minutes. Receiving credentials or ACTIVE status is not proof that S3 has propagated the grant. The old issuance benchmark does not establish new-prefix provisioning latency.</p></section><section id="automatic"><h2>Automatic bucket access · recommended HTTP path</h2><p>After onboarding and obtaining a service JWT as described below, send the bucket and operation. The backend selects a profile that the connector identity and token scopes already authorize. Object Storage applies the backend workload identity’s bucket-restricted IAM permissions.</p><pre><code>POST /v1/bucket-operations
 Authorization: Bearer &lt;access_token&gt;
 Content-Type: application/json
 
@@ -17,7 +22,7 @@ Authorization: Basic &lt;base64(client_id:client_secret)&gt;
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=client_credentials&amp;scope=&lt;URL-encoded-full-scope-URI&gt;</code></pre><p>Keep the returned <code>access_token</code> server-side. API Gateway validates it. The backend then checks the connector’s approved profile mapping and lease ownership.</p></section>
-<section><h2>3. Optional direct-S3 path: create a credential lease</h2><pre><code>POST /v1/leases
+<section><h2>3. Legacy profile request reference</h2><p>Use the dynamic folder request above on the current prefix-enabled deployment. The profile-only example below applies only when prefix access is disabled.</p><pre><code>POST /v1/leases
 Authorization: Bearer &lt;access_token&gt;
 Content-Type: application/json
 Idempotency-Key: 9b35fbb8-954c-46de-b48a-0bcf88637db4

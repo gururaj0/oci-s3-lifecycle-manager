@@ -1,0 +1,38 @@
+{
+  "event": "result",
+  "checks": {
+    "isolated_membership": true,
+    "inside_prefix_read": true,
+    "inside_prefix_write": true,
+    "outside_prefix_get_denied": true,
+    "outside_prefix_put_denied": true,
+    "prefix_filtered_listing": true,
+    "early_revoke_removes_membership_and_key": true,
+    "scope_group_reused": true,
+    "ttl_removes_membership_and_key": true
+  },
+  "timings": {
+    "issuance_1": 2.419,
+    "s3_grant_wait_seconds": 320.744,
+    "issuance_2": 2.395,
+    "ttl_cleanup_observed_lag_seconds": 6.478
+  },
+  "passed": true,
+  "cleanup_errors": [],
+  "fixture_bucket": "lcm-live-v2-sales",
+  "fixture_keys": [
+    "prefix-smoke/96df1de622894f8780e493836eed5d91/allowed/data.txt",
+    "prefix-smoke/96df1de622894f8780e493836eed5d91/sibling/data.txt",
+    "prefix-smoke/96df1de622894f8780e493836eed5d91/allowed/write.txt"
+  ],
+  "scope_prefix": "prefix-smoke/96df1de622894f8780e493836eed5d91/allowed/",
+  "leases": [
+    "9d8e54b7-24a2-4dc2-9736-2afd4740607f",
+    "9e1a56ed-386f-402b-88ba-580672bfb914"
+  ],
+  "listing_confidentiality_enforced": false,
+  "production_ready": false,
+  "test_fixtures_removed": true,
+  "empty_test_scopes_removed": 2,
+  "manual_cleanup_assistance": false
+}

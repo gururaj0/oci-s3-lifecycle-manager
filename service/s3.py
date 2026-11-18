@@ -63,6 +63,10 @@ async def handle_s3(request, engine, bucket, name):
         return xml_error('AccessDenied')
     profile = engine.cfg.profiles[lease['profile']]
     operation = 'LIST' if not name and request.method=='GET' else request.method
+    grant=engine.prefix_grant(lease['id']) if engine.cfg.prefix_enabled else None
+    if grant:
+        import json
+        if engine.cloud.prefix_memberships.get(lease['user_id'])!=grant['group_id'] or operation not in json.loads(grant['operations']) or (operation!='LIST' and not name.startswith(grant['prefix'])):return xml_error('AccessDenied')
     if bucket!=profile['bucket'] or operation not in profile['operations']:
         return xml_error('AccessDenied')
     if any(k in request.query_params for k in ['uploads','uploadId']):

@@ -58,7 +58,7 @@ class Connection:
             if self.execute('SELECT '+keys[0]+' FROM '+table+' WHERE '+' AND '.join(k+'=?' for k in keys),tuple(bound[k] for k in keys)).fetchone():
                 return Result(self.raw.cursor())
             sql=sql.replace('INSERT OR IGNORE INTO','INSERT INTO',1)
-        sql=re.sub(r'\b(users|leases|outbox|schedules|events|audit|control|rate_buckets|replay_refs)\b',lambda m:'lcm_'+m[0],sql)
+        sql=re.sub(r'\b(users|leases|outbox|schedules|events|audit|control|rate_buckets|replay_refs|prefix_grants)\b',lambda m:'lcm_'+m[0],sql)
         sql=re.sub(r'LIMIT (\d+)\s*$',r'FETCH FIRST \1 ROWS ONLY',sql,flags=re.I)
         n=0
         def bind(_):

@@ -23,6 +23,7 @@ def install_reference(app, cfg):
             'lease_id':{'type':'string','format':'uuid'},
             'status':{'type':'string','enum':['PREPARING','SCHEDULE_PENDING','ACTIVE','REVOKE_PENDING','REVOKED']},
             'phase':{'type':'string','enum':['PREPARING','CONFIRMING_SCHEDULE','PREPARING_REPLAY','ACTIVE','REVOKE_PENDING','REVOKED'],'description':'Committed issuance stage; exposes no credentials.'},
+            'bucket':{'type':'string'},'prefix':{'type':'string'},'operations':{'type':'array','items':{'type':'string'}},'group_id':{'type':['string','null']},'membership_id':{'type':['string','null']},
             'scope_profile':{'type':'string'},'service_user_id':{'type':'string'},
             **{k:{'type':'integer'} for k in ['profile_version','requested_ttl','generation']},
             **{k:{'type':['string','null'],'format':'date-time'} for k in ['created_at','key_created_at','expires_at','delivered_at','deleted_at']},
@@ -69,13 +70,13 @@ def install_reference(app, cfg):
         progress['responses']['200']=response('LeaseProgress','Current committed issuance stage and safe lease metadata')
         post=spec['paths']['/v1/leases']['post']
         post['responses']['422']=response('ApiError','Unsupported profile')
-        post['summary']='Create a lease or replay the same request'
-        post['description']='One UUID Idempotency-Key per intended lease. Reuse it with the identical body on retries. TTL is measured from IAM key creation. Secret response replay is bounded to 60 seconds.'
+        post['summary']='Request bucket/prefix credentials or replay a lease'
+        post['description']='For dynamic folder access provide bucket, a literal slash-terminated prefix, and operations (GET/LIST/PUT), without scope_profile. The backend selects an already-authorized profile, creates/reuses a prefix group and policy, reserves an isolated user and grants temporary membership. All configured demo bucket prefixes are authorized by default; operators may restrict allowed_prefixes per profile. LIST can expose other names in the bucket. IAM policy matching and propagation apply. Expiry removes the issued key and membership; groups/policies are retained for reuse (64 scope limit). When prefix access is enabled, new requests must specify bucket/prefix/operations; legacy profile-only issuance is disabled. Existing leases can still be inspected and revoked. One UUID Idempotency-Key per intended lease. Reuse it with the identical body on retries. TTL is measured from IAM key creation. Secret response replay is bounded to 60 seconds.'
         post['parameters']=[{'name':'Idempotency-Key','in':'header','required':True,'schema':{'type':'string','format':'uuid'},'description':'Owner-bound UUID; preserve across retries.'}]
         post['description']=post.get('description','')+' delivery_mode defaults to confirmed (wait for scheduling and Vault replay). immediate returns the real key after IAM creation and durable ledger/outbox recording with status SCHEDULE_PENDING; scheduling and Vault replay continue after the response. Background failure or abandoned setup causes revocation. Poll progress or lease metadata until ACTIVE. A lost response before replay storage is ready cannot recover the secret; retry the same Idempotency-Key, never create a replacement blindly. Native S3 propagation still applies.'
         post['responses']['201']=response('LeaseCredentials','New credentials; immediate mode may still have cleanup setup pending')
         post['responses']['200']=response('LeaseCredentials','Existing credentials replayed within the bounded window')
-        post['requestBody']['content']['application/json']['example']={'scope_profile':'sales-read','ttl_seconds':900,'client_request_id':'unity-query-123'}
+        post['requestBody']['content']['application/json']['example']={'bucket':next(iter(cfg.profiles.values()))['bucket'],'prefix':'quarterly/','operations':['GET','LIST'],'ttl_seconds':300,'delivery_mode':'immediate','client_request_id':'unity-query-123'}
         schemas['CreateLease']['properties']['ttl_seconds'].update(minimum=cfg.ttl_min,maximum=cfg.ttl_max,description='Seconds from key creation; this is not a native STS expiration.')
         spec['paths']['/v1/config']['get']['responses']['200']=response('Configuration','Profiles authorized for this connector identity and token scopes')
         spec['paths']['/v1/leases/{lease_id}']['get']['responses']['200']=response('LeaseMetadata','Owner-bound lease metadata; no credential secret')

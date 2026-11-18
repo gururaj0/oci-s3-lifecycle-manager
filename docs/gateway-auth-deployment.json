@@ -1,16 +1,16 @@
 {
-  "job_id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65iaah53i64cv5cnjerdjjtnslniwzuyjzatkrseaaimwmza",
+  "job_id": "ocid1.ormjob.oc1.iad.amaaaaaa5kvp65iaclf7kquk2pxtvgg2vfydbuffmjmythjnqeups7qucgba",
   "state": "SUCCEEDED",
-  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:dcd45978422ac4a3ac210610342dc5bbc646817384dacd0c877d9b8fa797956e",
+  "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
   "functions": {
-    "lcm-live-v2-delete": "sha256:dcd45978422ac4a3ac210610342dc5bbc646817384dacd0c877d9b8fa797956e",
-    "lcm-live-v2-reconcile": "sha256:dcd45978422ac4a3ac210610342dc5bbc646817384dacd0c877d9b8fa797956e",
-    "lcm-live-v2-sentinel": "sha256:dcd45978422ac4a3ac210610342dc5bbc646817384dacd0c877d9b8fa797956e",
-    "lcm-live-v2-setup": "sha256:dcd45978422ac4a3ac210610342dc5bbc646817384dacd0c877d9b8fa797956e"
+    "lcm-live-v2-delete": "sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
+    "lcm-live-v2-reconcile": "sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
+    "lcm-live-v2-sentinel": "sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
+    "lcm-live-v2-setup": "sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79"
   },
   "runtime": {
     "auth_mode": "gateway",
-    "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:dcd45978422ac4a3ac210610342dc5bbc646817384dacd0c877d9b8fa797956e",
+    "image": "iad.ocir.io/iddjqcmpf2tk/lcm-live-v2/worker@sha256:ce566cd97f02883ba49918f274b1c7c54a78add60e337fd277c74f1af988ef79",
     "separate_listeners": true,
     "proxy_headers_disabled": true
   },
@@ -20,7 +20,7 @@
   "api_listener_gateway_nsg_only": true,
   "temporary_build_permission_removed": true,
   "production_ready": false,
-  "unit_tests_passed": 97,
+  "unit_tests_passed": 119,
   "private_template_updated": true,
-  "release_archive_sha256": "bb482016f96e874e3c58b58cd2f6716a95dc138b0254bdd263a85a90dcde8885"
+  "release_archive_sha256": "e688b28f271227556a1e56fb7421f2048e345f9b5e99c8bb3646ebb4b3ff1b30"
 }

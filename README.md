@@ -10,6 +10,56 @@ See [cleanup record](docs/cleanup.md), [acceptance matrix](docs/acceptance.md),
 [capability decisions](docs/decisions.md), [threat model](docs/threat-model.md) and
 [operations/drain runbook](docs/operations.md).
 
+## Dynamic prefix leases
+
+The live UI requests a bucket, literal slash-terminated prefix, access mode and TTL.
+`POST /v1/leases` accepts `bucket`, `prefix`, `operations`, `ttl_seconds` and
+`delivery_mode: "immediate"`, with a Bearer token and persisted UUID Idempotency-Key.
+For example: `{"bucket":"lcm-live-v2-sales","prefix":"quarterly/","operations":["GET","LIST"],"ttl_seconds":300,"delivery_mode":"immediate"}`.
+
+The backend authorizes the bucket/operations against the connector's approved profiles and
+scopes, then applies configured `allowed_prefixes` (default: all nonempty prefixes in that
+approved bucket). It creates/reuses a deployment-owned prefix group and policy, allocates
+an isolated user with no standing memberships, records the grant and adds membership,
+then creates and returns an S3 key. Expiry removes the key and membership before reuse.
+Group/policy resources remain for reuse, capped at 64 distinct scopes. Users are allocated
+from a separate four-user pool; they are not created per request. New legacy profile-only
+issuance is disabled when prefix mode is enabled; existing leases can still be revoked.
+
+LIST grants bucket-level name inspection: prefix filters do not hide other object names.
+Object content policies follow OCI pattern matching and propagation semantics. Grant and
+revocation propagation must be measured; the old key-only benchmark is not a latency promise.
+Live tests returned credentials in about 2.4–6.8 seconds, but S3 first accepted the grant
+after approximately 261–321 seconds. A five-minute lease can therefore expire before it
+becomes usable. The UI defaults to 15 minutes. These are observations, not latency or
+revocation guarantees; key/membership absence in IAM does not prove immediate S3 denial.
+The separate workload-identity `/v1/bucket-operations` API retains its existing bucket-level
+contract. For current instructions use the published guide below; the PDF is a historical
+snapshot from before dynamic prefix leases.
+
+Deployment adds `003_prefix_grants.sql` to ADB, `prefix_access.tf` for isolated users and
+scoped provisioning/cleanup permissions, and enables `prefix_enabled` with
+`prefix_service_users` in runtime configuration. After provisioning, run
+`scripts/harden_prefix_users.py` with the operator OCI configuration: the Terraform provider
+does not disable the default database/OAuth credential capabilities. The runtime quarantines
+users with any capability other than Customer Secret Keys. Run `scripts/prefix_live_smoke.py` to verify
+real prefix GET/PUT isolation, early revocation, group reuse and TTL membership/key cleanup.
+
+Identity Domains membership calls require the tested resource-scoped `GROUP_UPDATE` and
+`USER_UPDATE` grants without operation-name filters. These remain restricted to deployment
+prefix groups and the four dedicated users. They also permit metadata updates and, at the
+IAM level, membership addition by cleanup workers; cleanup code only removes membership.
+Key creation/deletion permissions remain separate. This tradeoff was explicitly approved.
+Prefix cleanup uses the Identity Domains SCIM API to remove only the matched user from
+the matched group, verifies both OCIDs, and confirms membership absence through IAM.
+
+Validation: 119 automated tests pass. The unassisted live run passed all nine prefix
+isolation/lifecycle checks, with IAM key and membership absence observed 6.48 seconds
+after TTL. See [live evidence](docs/prefix-live-evidence.json) and
+[negative API checks](docs/prefix-negative-evidence.json). The delete Function also
+passed a separate cleanup test under its resource principal; see
+[Function evidence](docs/prefix-function-evidence.json).
+
 ## Live demo
 
 [Unity implementer guide](https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/unity) · [Interactive API reference](https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/docs) · [OpenAPI JSON](https://axcl6ctgxzrva4pjnkhxflibum.apigateway.us-ashburn-1.oci.customer-oci.com/openapi.json)

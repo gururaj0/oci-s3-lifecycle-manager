@@ -42,6 +42,8 @@ def remote(samples):
             expect(token_response,(200,));token=token_response.json()['access_token'];del token_response
             headers={'Authorization':'Bearer '+token,'Idempotency-Key':request_id}
             body={'scope_profile':'sales-read','ttl_seconds':300,'delivery_mode':'immediate','client_request_id':'oci-timing-'+request_id}
+            if cfg.get('prefix_enabled'):
+                body.pop('scope_profile');body.update(bucket=cfg['profiles']['sales-read']['bucket'],prefix='quarterly/',operations=['GET','LIST'])
             start=time.perf_counter()
             response=session.post(base+'/v1/leases',headers=headers,json=body,timeout=150)
             elapsed=time.perf_counter()-start
@@ -91,7 +93,7 @@ def remote(samples):
         if failures:break  # Do not consume more pool slots on an unresolved failure.
     session.close()
     timings=[r['credential_response_seconds'] for r in results]
-    summary={'event':'result','started_at_utc':started_at,'source':'existing private OCI demo VM (also hosts demo backend)','region':cfg['region'],'route':'public OCI API Gateway HTTPS endpoint','http_client':'Python requests HTTP/1.1 Session; reused connections where available','requested_samples':samples,'samples':results,'failures':failures,'excluded':['SSH setup','OAuth token acquisition','background finalization','revocation'],'includes':['client-to-gateway network','gateway authentication','backend authorization and reservation','IAM key creation','ADB recording','credential response transfer'],'isolated_backend_or_iam_timings_measured':False,'p95_method':'nearest rank; small sample preliminary only','passed':len(results)==samples and not failures and all(r.get('test_lease_revoked') for r in results)}
+    summary={'event':'result','started_at_utc':started_at,'source':'existing private OCI demo VM (also hosts demo backend)','region':cfg['region'],'route':'public OCI API Gateway HTTPS endpoint','http_client':'Python requests HTTP/1.1 Session; reused connections where available','requested_samples':samples,'samples':results,'failures':failures,'excluded':['SSH setup','OAuth token acquisition','background finalization','revocation'],'includes':['client-to-gateway network','gateway authentication','backend authorization and reservation','prefix group/policy/membership provisioning when enabled','IAM key creation','ADB recording','credential response transfer'],'isolated_backend_or_iam_timings_measured':False,'p95_method':'nearest rank; small sample preliminary only','passed':len(results)==samples and not failures and all(r.get('test_lease_revoked') for r in results)}
     if timings:summary['credential_response_seconds']={'median':round(statistics.median(timings),4),'p95':sorted(timings)[math.ceil(.95*len(timings))-1],'min':min(timings),'max':max(timings)}
     emit(summary)
     return 0 if summary['passed'] else 1

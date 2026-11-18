@@ -1,0 +1,7 @@
+{
+  "service/static/live.html": true,
+  "service/static/live.js": true,
+  "service/static/unity-api.html": true,
+  "openapi_matches": true,
+  "ready": true
+}

@@ -430,7 +430,7 @@
         ]
       },
       "post": {
-        "summary": "Create a lease or replay the same request",
+        "summary": "Request bucket/prefix credentials or replay a lease",
         "operationId": "create_v1_leases_post",
         "requestBody": {
           "content": {
@@ -439,8 +439,14 @@
                 "$ref": "#/components/schemas/CreateLease"
               },
               "example": {
-                "scope_profile": "sales-read",
-                "ttl_seconds": 900,
+                "bucket": "lcm-live-v2-sales",
+                "prefix": "quarterly/",
+                "operations": [
+                  "GET",
+                  "LIST"
+                ],
+                "ttl_seconds": 300,
+                "delivery_mode": "immediate",
                 "client_request_id": "unity-query-123"
               }
             }
@@ -550,7 +556,7 @@
         "tags": [
           "Lease lifecycle"
         ],
-        "description": "One UUID Idempotency-Key per intended lease. Reuse it with the identical body on retries. TTL is measured from IAM key creation. Secret response replay is bounded to 60 seconds. delivery_mode defaults to confirmed (wait for scheduling and Vault replay). immediate returns the real key after IAM creation and durable ledger/outbox recording with status SCHEDULE_PENDING; scheduling and Vault replay continue after the response. Background failure or abandoned setup causes revocation. Poll progress or lease metadata until ACTIVE. A lost response before replay storage is ready cannot recover the secret; retry the same Idempotency-Key, never create a replacement blindly. Native S3 propagation still applies.",
+        "description": "For dynamic folder access provide bucket, a literal slash-terminated prefix, and operations (GET/LIST/PUT), without scope_profile. The backend selects an already-authorized profile, creates/reuses a prefix group and policy, reserves an isolated user and grants temporary membership. All configured demo bucket prefixes are authorized by default; operators may restrict allowed_prefixes per profile. LIST can expose other names in the bucket. IAM policy matching and propagation apply. Expiry removes the issued key and membership; groups/policies are retained for reuse (64 scope limit). When prefix access is enabled, new requests must specify bucket/prefix/operations; legacy profile-only issuance is disabled. Existing leases can still be inspected and revoked. One UUID Idempotency-Key per intended lease. Reuse it with the identical body on retries. TTL is measured from IAM key creation. Secret response replay is bounded to 60 seconds. delivery_mode defaults to confirmed (wait for scheduling and Vault replay). immediate returns the real key after IAM creation and durable ledger/outbox recording with status SCHEDULE_PENDING; scheduling and Vault replay continue after the response. Background failure or abandoned setup causes revocation. Poll progress or lease metadata until ACTIVE. A lost response before replay storage is ready cannot recover the secret; retry the same Idempotency-Key, never create a replacement blindly. Native S3 propagation still applies.",
         "parameters": [
           {
             "name": "Idempotency-Key",
@@ -1328,10 +1334,60 @@
       "CreateLease": {
         "properties": {
           "scope_profile": {
-            "type": "string",
-            "maxLength": 80,
-            "minLength": 1,
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 80,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Scope Profile"
+          },
+          "bucket": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 256
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bucket"
+          },
+          "prefix": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 240
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prefix"
+          },
+          "operations": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "GET",
+                    "LIST",
+                    "PUT"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Operations"
           },
           "ttl_seconds": {
             "type": "integer",
@@ -1365,9 +1421,6 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "scope_profile"
-        ],
         "title": "CreateLease"
       },
       "HTTPValidationError": {
@@ -1544,6 +1597,30 @@
               "REVOKED"
             ],
             "description": "Committed issuance stage; exposes no credentials."
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "prefix": {
+            "type": "string"
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "group_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "membership_id": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "scope_profile": {
             "type": "string"

@@ -1,6 +1,6 @@
 'use strict';
 let csrf='',sessionExpires=0;
-let identity='',response=null,setup=null,leases=[],refreshing=false,issuanceVersion=0;
+let identity='',response=null,setup=null,leases=[],refreshing=false,issuanceVersion=0,prefixEnabled=false;
 const by=id=>document.getElementById(id);
 const node=(tag,text)=>{const n=document.createElement(tag);n.textContent=text;return n};
 async function call(path,options={}){
@@ -10,12 +10,12 @@ async function call(path,options={}){
  if(!r.ok)throw new Error(data?.error?.code||'DEPENDENCY_UNAVAILABLE');return data;
 }
 function profile(){const p=setup?.profiles[by('live-profile').value];if(p){by('live-bucket').textContent=p.bucket;by('live-operations').textContent=p.operations.join(' · ')}}
-const leaseStages={PREPARING:'Reserving a service user and creating credentials…',CONFIRMING_SCHEDULE:'Key recorded · Confirming expiration cleanup…',PREPARING_REPLAY:'Expiration scheduled · Preparing secure retry storage in Vault…',ACTIVE:'Expiration cleanup and secure retry storage are ready.'};
+const leaseStages={PREPARING:'Reserving a service user, provisioning access and creating credentials…',CONFIRMING_SCHEDULE:'Key recorded · Confirming expiration cleanup…',PREPARING_REPLAY:'Expiration scheduled · Preparing secure retry storage in Vault…',ACTIVE:'Expiration cleanup and secure retry storage are ready.'};
 function leaseStage(lease){return leaseStages[lease.phase||lease.status]||'Confirming expiration cleanup…'}
 function renderLeases(){
  by('live-rows').replaceChildren();
  leases.forEach(l=>{
-  const row=node('tr',''),name=node('td',l.lease_id.slice(0,8));name.append(node('small',l.scope_profile));row.append(name);
+  const row=node('tr',''),name=node('td',l.lease_id.slice(0,8));name.append(node('small',l.prefix?l.bucket+'/'+l.prefix:l.scope_profile));row.append(name);
   const user=setup?.service_users.find(u=>u.user_id===l.service_user_id);row.append(node('td',user?.name||l.service_user_id||'—'));
   const state=node('td',l.status.replaceAll('_',' '));
   if(l.status==='ACTIVE'){const seconds=Math.max(0,Math.ceil((Date.parse(l.expires_at)-Date.now())/1000));state.append(node('small',seconds?Math.floor(seconds/60)+'m '+String(seconds%60).padStart(2,'0')+'s remaining':'Cleanup due · access may persist'))}
@@ -53,12 +53,12 @@ async function refresh(){
   if(!audit.events.length)by('live-events').append(node('p','No lease activity yet.'));
  }catch(e){by('live-status').textContent=e.message}finally{refreshing=false}
 }
-async function connectIdentity(){try{const config=await call('/v1/config');if(config.mode!=='oci')throw new Error('LIVE_OCI_REQUIRED');by('live-profile').replaceChildren();Object.keys(config.profiles).forEach(p=>{const option=node('option',p);option.value=p;by('live-profile').append(option)});await inventory();by('live-create').disabled=false;by('live-status').textContent='Verified identity connected. '+Object.keys(config.profiles).length+' approved profiles.';await refresh();by('auto-bucket').replaceChildren();[...new Set(Object.values(config.profiles).map(p=>p.bucket))].forEach(bucket=>{const option=node('option',bucket);option.value=bucket;by('auto-bucket').append(option)});by('auto-run').disabled=false;by('auto-operation').value='LIST';await automaticAccess()}catch(e){identity='';by('live-create').disabled=true;by('live-status').textContent=e.message}}
+async function connectIdentity(){try{const config=await call('/v1/config');if(config.mode!=='oci')throw new Error('LIVE_OCI_REQUIRED');prefixEnabled=!!config.prefix_enabled;by('prefix-request').hidden=!prefixEnabled;by('legacy-profile').hidden=prefixEnabled;by('lease-bucket').replaceChildren();[...new Set(Object.values(config.profiles).map(p=>p.bucket))].forEach(b=>{const o=node('option',b);o.value=b;by('lease-bucket').append(o)});by('live-profile').replaceChildren();Object.keys(config.profiles).forEach(p=>{const option=node('option',p);option.value=p;by('live-profile').append(option)});await inventory();by('live-create').disabled=false;by('live-status').textContent='Verified identity connected. '+Object.keys(config.profiles).length+' approved profiles.';await refresh();by('auto-bucket').replaceChildren();[...new Set(Object.values(config.profiles).map(p=>p.bucket))].forEach(bucket=>{const option=node('option',bucket);option.value=bucket;by('auto-bucket').append(option)});by('auto-run').disabled=false;by('auto-operation').value='LIST';await automaticAccess()}catch(e){identity='';by('live-create').disabled=true;by('live-status').textContent=e.message}}
 by('connect').onsubmit=async e=>{e.preventDefault();identity=by('bearer').value;by('bearer').value='';await connectIdentity()};
 by('live-issue').onsubmit=async e=>{
  e.preventDefault();by('live-clear').click();const version=++issuanceVersion;
  const requestId=crypto.randomUUID(),started=Date.now();let pending=true,polling=false;
- const phases={PREPARING:'Reserving a service user and creating credentials…',CONFIRMING_SCHEDULE:'Credentials created. Confirming expiration cleanup…',PREPARING_REPLAY:'Cleanup scheduled. Preparing secure retry storage…',ACTIVE:'Credentials ready. Receiving the response…',REVOKE_PENDING:'Issuance did not complete. Cleanup is in progress.',REVOKED:'This request was revoked. No credentials will be displayed.'};
+ const phases={PREPARING:'Reserving a service user, provisioning access and creating credentials…',CONFIRMING_SCHEDULE:'Credentials created. Confirming expiration cleanup…',PREPARING_REPLAY:'Cleanup scheduled. Preparing secure retry storage…',ACTIVE:'Credentials ready. Receiving the response…',REVOKE_PENDING:'Issuance did not complete. Cleanup is in progress.',REVOKED:'This request was revoked. No credentials will be displayed.'};
  by('live-create').disabled=true;by('live-result-panel').hidden=false;by('live-credential-body').hidden=true;
  by('live-issuance-progress').textContent='Submitting your credential request…';by('live-issuance-time').textContent='0 seconds elapsed';
  by('live-status').textContent='Issuing credentials. Progress is shown above Your leases.';
@@ -71,11 +71,11 @@ by('live-issue').onsubmit=async e=>{
   finally{polling=false}
  },2000);
  try{
-  const issued=await call('/v1/leases',{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({scope_profile:by('live-profile').value,ttl_seconds:Number(by('live-ttl').value),delivery_mode:'immediate'})});
+  const issued=await call('/v1/leases',{method:'POST',headers:{'Idempotency-Key':requestId},body:JSON.stringify({... (prefixEnabled?{bucket:by('lease-bucket').value,prefix:by('lease-prefix').value,operations:by('lease-access').value==='write'?['GET','LIST','PUT']:['GET','LIST']}:{scope_profile:by('live-profile').value}),ttl_seconds:Number(by('live-ttl').value),delivery_mode:'immediate'})});
   if(version!==issuanceVersion||!identity)return;
   pending=false;response=issued;
   by('live-access').textContent=response.access_key_id;by('live-secret').value=response.secret_access_key;by('live-secret').type='password';
-  by('live-endpoint').textContent=response.endpoint;by('live-response').textContent=JSON.stringify({lease_id:response.lease_id,scope_profile:response.scope_profile,expires_at:response.expires_at,expiry_mode:response.expiry_mode},null,2);
+  by('live-endpoint').textContent=response.endpoint;by('live-response').textContent=JSON.stringify({lease_id:response.lease_id,scope_profile:response.scope_profile,bucket:response.bucket,prefix:response.prefix,operations:response.operations,expires_at:response.expires_at,expiry_mode:response.expiry_mode},null,2);
   by('live-probe-result').textContent='Run before and after revocation. New keys may take several minutes to reach S3.';
   by('live-issuance-progress').textContent=response.status==='ACTIVE'?'Credentials available. Expiration cleanup is scheduled.':'Credentials available · cleanup setup pending. Background failure will revoke this lease.';
   by('live-issuance-time').textContent='Credentials returned in '+Math.floor((Date.now()-started)/1000)+' seconds';by('live-credential-body').hidden=false;

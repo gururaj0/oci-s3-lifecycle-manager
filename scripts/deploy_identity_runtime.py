@@ -26,7 +26,7 @@ secret=oci.secrets.SecretsClient({},signer=signer).get_secret_bundle(cfg['oauth'
 assert set(json.loads(base64.b64decode(secret.secret_bundle_content.content)))=={'login_client_secret','connector_client_secret'}
 p=Path('/etc/lcm-live/config.json');backup=Path('/etc/lcm-live/config-before-identity.json')
 if not backup.exists():backup.write_bytes(p.read_bytes());backup.chmod(0o600)
-p.write_text(json.dumps(cfg));p.chmod(0o644)
+p.write_text(json.dumps(cfg))  # Preserve the existing runtime config permissions.
 subprocess.run(['/opt/lcm-live/venv/bin/python','/opt/lcm-live/source/scripts/install_live_runtime.py'],check=True)
 '''
 r=remote('sudo /opt/lcm-live/venv/bin/python -',code.encode())

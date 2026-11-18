@@ -17,16 +17,26 @@ SAFE = ('id', 'state', 'profile', 'profile_version', 'requested_ttl', 'generatio
 class Lifecycle:
     def __init__(self, cfg, ledger, cloud):
         self.cfg, self.db, self.cloud = cfg, ledger, cloud
+        if cfg.mode=='mock':cloud.db=ledger
         with ledger.tx() as c:
             for profile in cfg.profiles:
                 ids=cfg.service_users.get(profile,[]) if cfg.mode=='oci' else [f'{cfg.deployment_id}:{profile}:{n+1}' for n in range(cfg.pool_size)]
                 for user_id in ids:
                     c.execute('INSERT OR IGNORE INTO users(id,profile) VALUES(?,?)',(user_id,profile))
+            if cfg.prefix_enabled:
+                for profile in cfg.profiles:
+                    ids=cfg.prefix_service_users.get(profile,[]) if cfg.mode=='oci' else [f'{cfg.deployment_id}:prefix:{profile}:{n+1}' for n in range(cfg.pool_size)]
+                    for user_id in ids:c.execute('INSERT OR IGNORE INTO users(id,profile) VALUES(?,?)',(user_id,'prefix:'+profile))
             c.execute("INSERT OR IGNORE INTO control VALUES('paused','0')")
             c.execute("INSERT OR IGNORE INTO control VALUES('cleanup_error','0')")
             if cfg.mode=='mock':
                 c.execute('INSERT OR IGNORE INTO objects VALUES(?,?,?)',('sales-demo','quarterly/revenue.csv',b'quarter,revenue\nQ1,124000\nQ2,148000\nQ3,176000\n'))
                 c.execute('INSERT OR IGNORE INTO objects VALUES(?,?,?)',('sales-demo','README.txt',b'Synthetic sales data.\n'))
+
+    def prefix_grant(self,lease_id):
+        with self.db.connect() as c:
+            row=c.execute('SELECT * FROM prefix_grants WHERE lease_id=?',(lease_id,)).fetchone()
+            return dict(row) if row else None
 
     def healthy(self):
         now = time.time()
@@ -53,6 +63,9 @@ class Lifecycle:
                 utc(r[k]) if k.endswith('_at') else r[k] for k in SAFE}
         result['phase']=('PREPARING_REPLAY' if r['schedule_id'] else 'CONFIRMING_SCHEDULE') if r['state']=='SCHEDULE_PENDING' else r['state']
         if self.cfg.mode=='oci':result['service_user_id']=r['user_id']
+        if self.cfg.prefix_enabled:
+            grant=self.prefix_grant(r['id'])
+            if grant:result.update(bucket=grant['bucket'],prefix=grant['prefix'],operations=json.loads(grant['operations']),group_id=grant['group_id'],membership_id=grant['membership_id'])
         return result
 
     def owned(self, lease_id, owner):
@@ -96,7 +109,7 @@ class Lifecycle:
             overdue = c.execute("SELECT MIN(expires_at) FROM leases WHERE state!='REVOKED'").fetchone()[0]
             if (dependency and dependency[0]!='0') or not heartbeat or time.time()-float(heartbeat[0])>self.cfg.cleanup_stale or paused=='1' or (overdue and time.time()-overdue>self.cfg.overdue_threshold):
                 raise Problem(503, 'CLEANUP_UNHEALTHY')
-            user = c.execute('SELECT * FROM users WHERE profile=? AND active_lease IS NULL AND quarantined=0 ORDER BY id LIMIT 1', (profile,)).fetchone()
+            user = c.execute('SELECT * FROM users WHERE profile=? AND active_lease IS NULL AND quarantined=0 ORDER BY id LIMIT 1', (('prefix:'+profile) if body.get('prefix') else profile,)).fetchone()
             if not user:
                 raise Problem(429, 'POOL_EXHAUSTED')
             user_id = user['id']
@@ -108,6 +121,8 @@ class Lifecycle:
                       (lease_id,self.cfg.deployment_id,owner['issuer'],owner['subject'],profile,
                        self.cfg.profiles[profile]['version'],user_id,display,'PREPARING',ttl,time.time(),digest,
                        idem,body.get('client_request_id'),correlation))
+            if body.get('prefix'):
+                c.execute('INSERT INTO prefix_grants(lease_id,bucket,prefix,operations) VALUES(?,?,?,?)',(lease_id,body['bucket'],body['prefix'],json.dumps(body['operations'])))
             self.db.audit(c,lease_id,'RESERVED',correlation)
         try:
             if self.cfg.mode=='oci':self.cloud.validate_user(user_id)
@@ -115,6 +130,9 @@ class Lifecycle:
                 with self.db.tx() as c:
                     c.execute('UPDATE users SET quarantined=1 WHERE id=?', (user_id,))
                 raise RuntimeError('UNEXPECTED_KEYS')
+            if body.get('prefix'):
+                self.cloud.ensure_prefix_membership(lease_id,user_id)
+                with self.db.tx() as c:self.db.audit(c,lease_id,'PREFIX_MEMBERSHIP_GRANTED',correlation)
             key = self.cloud.create_key(user_id, display)
             expires = key['created'] + ttl
             with self.db.tx() as c:
@@ -132,6 +150,7 @@ class Lifecycle:
             payload = {'lease_id':lease_id,'status':'SCHEDULE_PENDING','access_key_id':key['id'],
                        'secret_access_key':key['secret'],'endpoint':endpoint,'region':self.cfg.region,
                        'scope_profile':profile,'expires_at':utc(expires),'expiry_mode':'managed_key_deletion'}
+            if body.get('prefix'):payload.update(bucket=body['bucket'],prefix=body['prefix'],operations=body['operations'],listing_scope='bucket' if 'LIST' in body['operations'] else 'none')
             if defer_setup:
                 # The durable SETUP outbox and pending lease survive process loss.
                 # No plaintext secret is persisted; a lost finalizer means no replay
@@ -247,6 +266,9 @@ class Lifecycle:
                                   (key['id'],key['created'],key['created']+r['requested_ttl'],lease_id))
                 if any(k['display_name']==r['display_name'] for k in self.cloud.list_keys(r['user_id'])):
                     raise RuntimeError('DELETE_NOT_CONFIRMED')
+                if self.cfg.prefix_enabled:
+                    grant=c.execute('SELECT * FROM prefix_grants WHERE lease_id=?',(lease_id,)).fetchone()
+                    if grant:self.cloud.remove_prefix_membership(dict(grant),r['user_id'])
                 self.cloud.remove_response(r['replay_ref'])
                 if self.cfg.mode=='oci' and r['schedule_id']:
                     self.cloud.remove_schedule(r['schedule_id'])
@@ -284,7 +306,7 @@ class Lifecycle:
         with self.db.tx() as c:
             c.execute('UPDATE leases SET replay_ref=NULL WHERE replay_until<=?',(now,))
             # A crashed or ambiguous create may have left a key outside ledger persistence.
-            c.execute("UPDATE leases SET state='REVOKE_PENDING',revoke_intent=1 WHERE state='PREPARING' AND created_at<?",(now-30,))
+            c.execute("UPDATE leases SET state='REVOKE_PENDING',revoke_intent=1 WHERE state='PREPARING' AND created_at<?",(now-(180 if self.cfg.prefix_enabled else 30),))
             c.execute("UPDATE leases SET state='REVOKE_PENDING',revoke_intent=1 WHERE state='SCHEDULE_PENDING' AND created_at<?",(now-60,))
             rows = [dict(r) for r in c.execute("SELECT * FROM leases WHERE state!='REVOKED'")]
         for r in rows:

@@ -7,7 +7,9 @@ import time
 import uuid
 import oci
 
-class OCICloud:
+from shared.prefix_cloud import PrefixCloud
+
+class OCICloud(PrefixCloud):
     def __init__(self,cfg,ledger,clients=None):
         self.cfg,self.db=cfg,ledger
         signer=oci.auth.signers.get_resource_principals_signer() if cfg.workload=='function' else oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
@@ -18,7 +20,8 @@ class OCICloud:
         self.scheduler=oci.resource_scheduler.ScheduleClient(opts,signer=signer,timeout=(5,20))
         self.monitoring=oci.monitoring.MonitoringClient(opts,signer=signer,
             service_endpoint='https://telemetry-ingestion.'+cfg.region+'.oraclecloud.com',timeout=(5,10))
-        self.managed={u for users in cfg.service_users.values() for u in users}
+        self.prefix_users={u for users in cfg.prefix_service_users.values() for u in users}
+        self.managed={u for users in cfg.service_users.values() for u in users}|self.prefix_users
 
     def fault(self,_):pass
 
@@ -50,14 +53,25 @@ class OCICloud:
 
     def validate_user(self,user):
         self._user(user)
-        profile=next(p for p,users in self.cfg.service_users.items() if user in users)
+        profile=next((p for p,users in self.cfg.service_users.items() if user in users),None)
         value=self.identity.get_user(user).data
         caps=oci.util.to_dict(value.capabilities)
         if value.lifecycle_state!='ACTIVE' or not caps.get('can_use_customer_secret_keys') or any(v for k,v in caps.items() if k!='can_use_customer_secret_keys'):
             raise PermissionError('IDENTITY_CAPABILITY_DRIFT')
+        def prefix_state():
+            with self.db.connect() as c:
+                row=c.execute("SELECT l.id,g.group_id,l.state FROM prefix_grants g JOIN leases l ON g.lease_id=l.id JOIN users u ON u.active_lease=l.id WHERE u.id=?",(user,)).fetchone()
+                return dict(row) if row else None
+        before=prefix_state() if user in self.prefix_users else None
         groups=oci.pagination.list_call_get_all_results(self.identity.list_user_group_memberships,
             self.cfg.tenancy_id,user_id=user).data
-        if {g.group_id for g in groups}!={self.cfg.profiles[profile]['group_id']}:
+        if user in self.prefix_users:
+            row=prefix_state()
+            if row!=before:return  # Concurrent grant/revoke; inspect a stable snapshot next time.
+            expected={row['group_id']} if row and row['group_id'] else set()
+            actual={g.group_id for g in groups}
+            if actual-expected or (row and row['state']=='ACTIVE' and actual!=expected):raise PermissionError('IDENTITY_MEMBERSHIP_DRIFT')
+        elif {g.group_id for g in groups}!={self.cfg.profiles[profile]['group_id']}:
             raise PermissionError('IDENTITY_MEMBERSHIP_DRIFT')
 
     def create_key(self,user,display_name):

@@ -59,7 +59,7 @@ def main():
         # On transport timeout, retry this request with the SAME persisted UUID/body.
         # A new UUID would represent a different lease. See the guide's retry table.
         response = connector.call('POST', '/v1/leases', headers={'Idempotency-Key':idem},
-            json={'scope_profile':PROFILE,'ttl_seconds':900,'client_request_id':'unity-example'})
+            json={'bucket':profile['bucket'],'prefix':os.environ.get('LCM_PREFIX','quarterly/'),'operations':['GET','LIST'],'ttl_seconds':900,'delivery_mode':'immediate','client_request_id':'unity-example'})
         if response.status_code not in (200,201):
             raise RuntimeError('Lease request failed: HTTP '+str(response.status_code))
         lease = response.json()
@@ -67,7 +67,7 @@ def main():
             aws_access_key_id=lease['access_key_id'], aws_secret_access_key=lease['secret_access_key'],
             config=Config(signature_version='s3v4',s3={'addressing_style':'path'}))
         # Initial S3 access can fail during propagation; production callers need bounded retries.
-        s3.list_objects_v2(Bucket=profile['bucket'],MaxKeys=1)
+        s3.list_objects_v2(Bucket=profile['bucket'],Prefix=lease['prefix'],MaxKeys=1)
         print('S3 request completed; no credentials displayed.')
     finally:
         try:

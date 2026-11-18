@@ -11,15 +11,37 @@ from shared.auth import private_file
 
 class MockCloud:
     def __init__(self, cfg):
+        self.cfg=cfg
         self.path = cfg.state_dir / 'mock-cloud.db'
         self.fernet = Fernet(private_file(cfg.state_dir / 'mock-vault.key', Fernet.generate_key()))
+        self.db=None
         self.fail = {}  # deterministic in-process fault injection, never exposed by HTTP
         with self.connect() as c:
             c.executescript('''PRAGMA journal_mode=WAL;
 CREATE TABLE IF NOT EXISTS keys(id TEXT PRIMARY KEY,user_id TEXT,display_name TEXT UNIQUE,created REAL,secret BLOB);
+CREATE TABLE IF NOT EXISTS prefix_members(user_id TEXT PRIMARY KEY,group_id TEXT);
 CREATE TABLE IF NOT EXISTS secrets(id TEXT PRIMARY KEY,ciphertext BLOB,expires REAL);
 ''')
         self.path.chmod(0o600)
+
+    @property
+    def prefix_memberships(self):
+        with self.connect() as c:return dict(c.execute('SELECT user_id,group_id FROM prefix_members'))
+
+    def ensure_prefix_membership(self,lease,user):
+        self.fault('prefix_provision')
+        from shared.prefix_access import scope_name
+        with self.db.tx() as c:
+            grant=dict(c.execute('SELECT * FROM prefix_grants WHERE lease_id=?',(lease,)).fetchone())
+            group=scope_name(self.cfg,grant)
+            c.execute('UPDATE prefix_grants SET group_id=?,policy_id=? WHERE lease_id=?',(group,group+'-policy',lease))
+        with self.connect() as c:c.execute('INSERT OR REPLACE INTO prefix_members VALUES(?,?)',(user,group))
+        self.fault('membership_after')
+        with self.db.tx() as c:c.execute('UPDATE prefix_grants SET membership_id=? WHERE lease_id=?',(group+'-membership',lease))
+
+    def remove_prefix_membership(self,grant,user):
+        self.fault('membership_remove')
+        with self.connect() as c:c.execute('DELETE FROM prefix_members WHERE user_id=?',(user,))
 
     def connect(self):
         c = sqlite3.connect(str(self.path), timeout=30)

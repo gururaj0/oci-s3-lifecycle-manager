@@ -1,0 +1,14 @@
+{
+  "traversal": {
+    "http_status": 400,
+    "passed": true
+  },
+  "foreign_bucket": {
+    "http_status": 403,
+    "passed": true
+  },
+  "legacy_broad_request": {
+    "http_status": 400,
+    "passed": true
+  }
+}
