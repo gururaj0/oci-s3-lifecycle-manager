@@ -1,6 +1,6 @@
 {
   "event": "result",
-  "started_at_utc": "2026-11-17T15:05:11.815933+00:00",
+  "started_at_utc": "2026-11-17T15:31:47.334537+00:00",
   "source": "existing private OCI demo VM (also hosts demo backend)",
   "region": "us-ashburn-1",
   "route": "public OCI API Gateway HTTPS endpoint",
@@ -9,42 +9,42 @@
   "samples": [
     {
       "sample": 1,
-      "credential_response_seconds": 1.7486,
+      "credential_response_seconds": 1.0611,
       "http_status": 201,
       "delivery_status": "SCHEDULE_PENDING",
-      "finalization_observed_seconds": 48.2619,
+      "finalization_observed_seconds": 53.5576,
       "test_lease_revoked": true
     },
     {
       "sample": 2,
-      "credential_response_seconds": 1.2884,
+      "credential_response_seconds": 1.6952,
       "http_status": 201,
       "delivery_status": "SCHEDULE_PENDING",
-      "finalization_observed_seconds": 35.5366,
+      "finalization_observed_seconds": 29.8898,
       "test_lease_revoked": true
     },
     {
       "sample": 3,
-      "credential_response_seconds": 1.2077,
+      "credential_response_seconds": 1.1897,
       "http_status": 201,
       "delivery_status": "SCHEDULE_PENDING",
-      "finalization_observed_seconds": 43.5156,
+      "finalization_observed_seconds": 49.5146,
       "test_lease_revoked": true
     },
     {
       "sample": 4,
-      "credential_response_seconds": 1.2373,
+      "credential_response_seconds": 1.1852,
       "http_status": 201,
       "delivery_status": "SCHEDULE_PENDING",
-      "finalization_observed_seconds": 61.6519,
+      "finalization_observed_seconds": 47.4902,
       "test_lease_revoked": true
     },
     {
       "sample": 5,
-      "credential_response_seconds": 1.0975,
+      "credential_response_seconds": 1.2448,
       "http_status": 201,
       "delivery_status": "SCHEDULE_PENDING",
-      "finalization_observed_seconds": 59.4989,
+      "finalization_observed_seconds": 43.5143,
       "test_lease_revoked": true
     }
   ],
@@ -67,9 +67,9 @@
   "p95_method": "nearest rank; small sample preliminary only",
   "passed": true,
   "credential_response_seconds": {
-    "median": 1.2373,
-    "p95": 1.7486,
-    "min": 1.0975,
-    "max": 1.7486
+    "median": 1.1897,
+    "p95": 1.6952,
+    "min": 1.0611,
+    "max": 1.6952
   }
 }
