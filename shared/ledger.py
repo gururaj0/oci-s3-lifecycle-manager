@@ -64,7 +64,8 @@ class Ledger:
         return c
 
     @contextmanager
-    def tx(self):
+    def tx(self, lock_key="writer_lock"):
+        # SQLite retains its single-writer semantics; OCI uses scoped row locks.
         c = self.connect()
         try:
             c.execute('BEGIN IMMEDIATE')

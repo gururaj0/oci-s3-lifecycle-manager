@@ -53,7 +53,7 @@ Key creation/deletion permissions remain separate. This tradeoff was explicitly 
 Prefix cleanup uses the Identity Domains SCIM API to remove only the matched user from
 the matched group, verifies both OCIDs, and confirms membership absence through IAM.
 
-Validation: 122 automated tests pass. The unassisted live run passed all nine prefix
+Validation: 127 automated tests pass. The unassisted live run passed all nine prefix
 isolation/lifecycle checks, with IAM key and membership absence observed 6.48 seconds
 after TTL. See [live evidence](docs/prefix-live-evidence.json) and
 [negative API checks](docs/prefix-negative-evidence.json). The delete Function also
@@ -64,6 +64,37 @@ Live S3 diagnostics follow the returned lease prefix (including case). They defa
 to LIST for prefix leases, suggest returned object keys for GET, and reject GET keys
 outside that prefix. For an empty prefix, a write lease can PUT its dedicated test
 object and then GET it; read-only leases need an existing object to test GET.
+
+## Diagnostic latency and asynchronous work
+
+Background schedule setup and deletion serialize on a per-lease ADB mutex, rather than
+holding the global writer mutex during OCI calls. Rate limiting and diagnostic audit
+writes have separate mutexes. Pool reservation, idempotency, entitlement validation,
+membership provisioning and durable key recording still finish before credential delivery.
+Same-lease setup/deletion remain serialized across the API and Functions.
+
+Scheduling and Vault replay preparation continue after immediate credential delivery.
+Confirmed schedule setup is idempotent. Diagnostic audit writes run after the response
+and can be lost if that process terminates; lifecycle audit writes remain durable.
+Revocation returns 202 after recording intent and performs cleanup in the background,
+with the reconciler recovering interrupted work. Poll until REVOKED before assuming
+cleanup completed. The UI shows results before refreshing metrics.
+
+Existing prefix scopes use stored group/policy OCIDs for direct lookup, while revalidating
+ownership and the exact policy statements. A reused policy still requires a fresh user
+membership and Customer Secret Key. Faster API responses do not guarantee immediate
+S3 acceptance. Diagnostic results expose the exact S3 error code, S3 call duration,
+backend duration and lease age; the UI also shows client round-trip time. Credential
+responses include backend stage timings. None include OAuth token-generation time.
+
+Run `scripts/async_latency_smoke.py` from the configured operator workspace to measure
+OCI compute → API Gateway → backend, followed by direct S3 readiness checks. It uses
+the existing DemoBastion connection, obtains OAuth before timing, and revokes/verifies
+its temporary lease afterward. `--baseline` takes one S3 sample instead of polling.
+The existing-policy live sample reduced diagnostic response time from 24.42 s to
+0.42 s; credentials returned in 2.46 s. The same fresh key first succeeded on S3
+at the 121-second poll, so fast issuance does not mean immediate readiness.
+See [timing investigation](docs/async-performance.md).
 
 ## Live demo
 

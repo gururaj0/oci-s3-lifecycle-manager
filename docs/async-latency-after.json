@@ -1,0 +1,228 @@
+{
+  "event": "result",
+  "baseline": false,
+  "oauth_generation_excluded": true,
+  "samples": [
+    {
+      "operation": "LIST",
+      "since_response_seconds": 0.691,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.097
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 0.788,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0069
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 10.795,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0048
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 10.8,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0061
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 20.806,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0441
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 20.85,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0037
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 30.854,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0038
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 30.858,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0097
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 40.868,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0228
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 40.89,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0055
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 50.896,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0042
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 50.9,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0032
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 60.904,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0128
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 60.916,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0036
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 70.92,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.005
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 70.925,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0031
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 80.929,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0209
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 80.95,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.003
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 90.953,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0036
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 90.956,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0034
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 100.96,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0247
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 100.985,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0036
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 110.988,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0244
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 111.013,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0166
+    },
+    {
+      "operation": "LIST",
+      "since_response_seconds": 121.03,
+      "http_status": 200,
+      "call_seconds": 0.0437
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 121.073,
+      "http_status": 200,
+      "call_seconds": 0.0556
+    }
+  ],
+  "passed": true,
+  "credential_response_seconds": 2.4581,
+  "lease_id": "695bb18d-6ad9-40d4-8812-a771e45ea7fc",
+  "backend_timings": {
+    "reservation_seconds": 0.0224,
+    "identity_checks_seconds": 0.526,
+    "prefix_provisioning_seconds": 1.268,
+    "prefix_resources": {
+      "group_reused": true,
+      "policy_reused": true,
+      "lookup": "ledger_ids"
+    },
+    "key_creation_seconds": 0.5602,
+    "credential_recording_seconds": 0.0095,
+    "backend_issuance_seconds": 2.3898
+  },
+  "same_existing_group": true,
+  "phase_before_test": "CONFIRMING_SCHEDULE",
+  "diagnostic_http_status": 200,
+  "diagnostic_round_trip_seconds": 0.4247,
+  "diagnostic": {
+    "mode": "oci",
+    "operation": "GET",
+    "expected_access": "ALLOW",
+    "bucket": "lcm-live-v2-sales",
+    "prefix": "quarterly/",
+    "object_name": "quarterly/revenue.csv",
+    "http_status": 403,
+    "s3_error_code": "SignatureDoesNotMatch",
+    "observed_access": "DENY",
+    "s3_request_seconds": 0.1976,
+    "matches_expectation": false,
+    "note": "This is an actual OCI S3 result. New-key propagation and delayed deletion can affect results; a lease timestamp alone does not enforce denial.",
+    "backend_test_seconds": 0.3349,
+    "lease_age_seconds": 0.593
+  },
+  "phase_after_test": "CONFIRMING_SCHEDULE",
+  "both_s3_operations_observed_ready": true,
+  "revoke_response_seconds": 0.0189,
+  "key_absent": true,
+  "membership_absent": true
+}

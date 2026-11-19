@@ -1,0 +1,7 @@
+{
+  "rate_transaction_seconds": 0.1496,
+  "global_transaction_seconds": 0.0035,
+  "other_lease_transaction_seconds": 0.0074,
+  "same_lease_serialized": true,
+  "other_work_completed_while_lease_locked": true
+}

@@ -239,9 +239,12 @@ def create_app(lcm=None, worker=True):
         return e.view(scoped_lease(lease_id,who))
 
     @app.delete('/v1/leases/{lease_id}')
-    def delete(lease_id:uuid.UUID,who=Depends(owner)):
+    def delete(lease_id:uuid.UUID,background:BackgroundTasks,who=Depends(owner)):
         scoped_lease(lease_id,who)
-        status=e.revoke(str(lease_id),who)
+        deferred=e.cfg.mode=='oci'
+        status=e.revoke(str(lease_id),who,defer_delete=deferred)
+        if deferred and status==202:
+            row=e.db.lease(str(lease_id));background.add_task(e.delete,str(lease_id),row['generation'])
         return Response(status_code=status)
 
     @app.get('/v1/leases')
@@ -283,11 +286,11 @@ def create_app(lcm=None, worker=True):
         return {'events':[dict(r) for r in rows]}
 
     @app.post('/v1/leases/{lease_id}/tests', include_in_schema=e.cfg.mode=='oci')
-    def live_test(lease_id:uuid.UUID,body:LiveTest,who=Depends(owner)):
+    def live_test(lease_id:uuid.UUID,body:LiveTest,background:BackgroundTasks,who=Depends(owner)):
         if e.cfg.mode!='oci':raise Problem(404,'NOT_FOUND')
         scoped_lease(lease_id,who)
         from service.live_tests import run_test
-        return run_test(e,who,str(lease_id),body)
+        return run_test(e,who,str(lease_id),body,defer_audit=background.add_task)
 
     @app.get('/demo/info', include_in_schema=e.cfg.mode=='mock')
     def info():

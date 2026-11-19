@@ -1,0 +1,46 @@
+{
+  "event": "result",
+  "baseline": true,
+  "oauth_generation_excluded": true,
+  "samples": [
+    {
+      "operation": "LIST",
+      "since_response_seconds": 24.532,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0872
+    },
+    {
+      "operation": "GET",
+      "since_response_seconds": 24.619,
+      "http_status": 403,
+      "error_code": "SignatureDoesNotMatch",
+      "call_seconds": 0.0046
+    }
+  ],
+  "passed": true,
+  "credential_response_seconds": 2.6111,
+  "lease_id": "ead64f78-cee4-4d19-8d2e-8339e16b2129",
+  "backend_timings": {},
+  "same_existing_group": true,
+  "phase_before_test": "CONFIRMING_SCHEDULE",
+  "diagnostic_http_status": 200,
+  "diagnostic_round_trip_seconds": 24.4164,
+  "diagnostic": {
+    "mode": "oci",
+    "operation": "GET",
+    "expected_access": "ALLOW",
+    "bucket": "lcm-live-v2-sales",
+    "prefix": "quarterly/",
+    "object_name": "quarterly/revenue.csv",
+    "http_status": 403,
+    "observed_access": "DENY",
+    "matches_expectation": false,
+    "note": "This is an actual OCI S3 result. New-key propagation and delayed deletion can affect results; a lease timestamp alone does not enforce denial."
+  },
+  "phase_after_test": "PREPARING_REPLAY",
+  "both_s3_operations_observed_ready": false,
+  "revoke_response_seconds": 18.5121,
+  "key_absent": true,
+  "membership_absent": true
+}

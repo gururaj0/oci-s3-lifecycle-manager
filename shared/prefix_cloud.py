@@ -10,8 +10,22 @@ class PrefixCloud:
     def ensure_prefix_membership(self,lease,user):
         self._user(user);grant=self._grant(lease);name=scope_name(self.cfg,grant)
         tags={'application':'oci-s3-lcm','deployment':self.cfg.deployment_id,'purpose':'prefix-access'}
-        groups=oci.pagination.list_call_get_all_results(self.identity.list_groups,self.cfg.tenancy_id).data
-        group=next((g for g in groups if g.name==name),None)
+        group=policy=None;lookup='enumeration'
+        with self.db.connect() as c:
+            cached=c.execute('SELECT g.group_id,g.policy_id FROM prefix_grants g JOIN leases l ON l.id=g.lease_id WHERE g.bucket=? AND g.prefix=? AND g.operations=? AND g.group_id IS NOT NULL AND g.policy_id IS NOT NULL ORDER BY l.created_at DESC LIMIT 1',
+                (grant['bucket'],grant['prefix'],grant['operations'])).fetchone()
+        if cached:
+            try:
+                group=self.identity.get_group(cached['group_id']).data
+                policy=self.identity.get_policy(cached['policy_id']).data
+                lookup='ledger_ids'
+            except oci.exceptions.ServiceError as exc:
+                if exc.status!=404:raise
+                group=policy=None
+        if group is None:
+            groups=oci.pagination.list_call_get_all_results(self.identity.list_groups,self.cfg.tenancy_id).data
+            group=next((g for g in groups if g.name==name),None)
+        group_reused=group is not None
         if group is None:
             if sum(g.name.startswith(self.cfg.deployment_id+'-prefix-') for g in groups)>=self.cfg.prefix_scope_limit:raise RuntimeError('PREFIX_SCOPE_LIMIT')
             try:group=self.identity.create_group(oci.identity.models.CreateGroupDetails(compartment_id=self.cfg.tenancy_id,name=name,description='LCM on-demand prefix access',freeform_tags=tags),retry_strategy=oci.retry.NoneRetryStrategy()).data
@@ -19,22 +33,24 @@ class PrefixCloud:
                 if exc.status!=409:raise
                 groups=oci.pagination.list_call_get_all_results(self.identity.list_groups,self.cfg.tenancy_id).data
                 group=next(g for g in groups if g.name==name)
-        if any(group.freeform_tags.get(k)!=v for k,v in tags.items()):raise PermissionError('PREFIX_GROUP_OWNERSHIP')
+        if group.name!=name or any((group.freeform_tags or {}).get(k)!=v for k,v in tags.items()):raise PermissionError('PREFIX_GROUP_OWNERSHIP')
         desired=statements(self.cfg,grant,group.id)
-        policies=oci.pagination.list_call_get_all_results(self.identity.list_policies,self.cfg.compartment_id).data
-        policy=next((p for p in policies if p.name==name),None)
+        if policy is None:
+            policies=oci.pagination.list_call_get_all_results(self.identity.list_policies,self.cfg.compartment_id).data
+            policy=next((p for p in policies if p.name==name),None)
+        policy_reused=policy is not None
         if policy is None:
             try:policy=self.identity.create_policy(oci.identity.models.CreatePolicyDetails(compartment_id=self.cfg.compartment_id,name=name,description='LCM prefix-scoped object permissions; LIST exposes bucket names',statements=desired,freeform_tags=tags),retry_strategy=oci.retry.NoneRetryStrategy()).data
             except oci.exceptions.ServiceError as exc:
                 if exc.status!=409:raise
                 policies=oci.pagination.list_call_get_all_results(self.identity.list_policies,self.cfg.compartment_id).data
                 policy=next(p for p in policies if p.name==name)
-        if set(policy.statements)!=set(desired) or any(policy.freeform_tags.get(k)!=v for k,v in tags.items()):raise PermissionError('PREFIX_POLICY_DRIFT')
+        if policy.name!=name or set(policy.statements)!=set(desired) or any((policy.freeform_tags or {}).get(k)!=v for k,v in tags.items()):raise PermissionError('PREFIX_POLICY_DRIFT')
         with self.db.tx() as c:
             row=c.execute('SELECT state FROM leases WHERE id=?',(lease,)).fetchone()
             if row['state']!='PREPARING':raise RuntimeError('LEASE_NO_LONGER_PREPARING')
             c.execute('UPDATE prefix_grants SET group_id=?,policy_id=? WHERE lease_id=?',(group.id,policy.id,lease))
-        with self.db.tx() as c:
+        with self.db.tx(lock_key="lease:"+lease) as c:
             row=c.execute('SELECT state FROM leases WHERE id=?',(lease,)).fetchone()
             if row['state']!='PREPARING':raise RuntimeError('LEASE_NO_LONGER_PREPARING')
             # Serialize membership grant against revoke and stale-create recovery.
@@ -45,6 +61,7 @@ class PrefixCloud:
                 member=self.identity.add_user_to_group(oci.identity.models.AddUserToGroupDetails(user_id=user,group_id=group.id),retry_strategy=oci.retry.NoneRetryStrategy()).data
             c.execute('UPDATE prefix_grants SET membership_id=? WHERE lease_id=?',(member.id,lease))
         # A lost add reply is recovered by listing membership during compensation.
+        return {'group_reused':group_reused,'policy_reused':policy_reused,'lookup':lookup}
 
     def remove_prefix_membership(self,grant,user):
         self._user(user)

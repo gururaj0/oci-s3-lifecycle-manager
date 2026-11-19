@@ -50,7 +50,7 @@ def remote(samples):
             expect(response,(201,))
             credential=response.json();lease_id=credential['lease_id']
             assert credential.get('access_key_id') and credential.get('secret_access_key')
-            row.update(credential_response_seconds=round(elapsed,4),http_status=response.status_code,delivery_status=credential['status'])
+            row.update(credential_response_seconds=round(elapsed,4),http_status=response.status_code,delivery_status=credential['status'],backend_timings=credential.get('timings',{}))
             credential.clear();response.close();del response,credential
             issued=True;emit({'event':'credentials_received',**row})
             # Allow normal finalization, rather than revoking while it is still running.
@@ -93,7 +93,7 @@ def remote(samples):
         if failures:break  # Do not consume more pool slots on an unresolved failure.
     session.close()
     timings=[r['credential_response_seconds'] for r in results]
-    summary={'event':'result','started_at_utc':started_at,'source':'existing private OCI demo VM (also hosts demo backend)','region':cfg['region'],'route':'public OCI API Gateway HTTPS endpoint','http_client':'Python requests HTTP/1.1 Session; reused connections where available','requested_samples':samples,'samples':results,'failures':failures,'excluded':['SSH setup','OAuth token acquisition','background finalization','revocation'],'includes':['client-to-gateway network','gateway authentication','backend authorization and reservation','prefix group/policy/membership provisioning when enabled','IAM key creation','ADB recording','credential response transfer'],'isolated_backend_or_iam_timings_measured':False,'p95_method':'nearest rank; small sample preliminary only','passed':len(results)==samples and not failures and all(r.get('test_lease_revoked') for r in results)}
+    summary={'event':'result','started_at_utc':started_at,'source':'existing private OCI demo VM (also hosts demo backend)','region':cfg['region'],'route':'public OCI API Gateway HTTPS endpoint','http_client':'Python requests HTTP/1.1 Session; reused connections where available','requested_samples':samples,'samples':results,'failures':failures,'excluded':['SSH setup','OAuth token acquisition','background finalization','revocation'],'includes':['client-to-gateway network','gateway authentication','backend authorization and reservation','prefix group/policy/membership provisioning when enabled','IAM key creation','ADB recording','credential response transfer'],'backend_stage_timings_available':all(bool(r.get('backend_timings')) for r in results),'p95_method':'nearest rank; small sample preliminary only','passed':len(results)==samples and not failures and all(r.get('test_lease_revoked') for r in results)}
     if timings:summary['credential_response_seconds']={'median':round(statistics.median(timings),4),'p95':sorted(timings)[math.ceil(.95*len(timings))-1],'min':min(timings),'max':max(timings)}
     emit(summary)
     return 0 if summary['passed'] else 1

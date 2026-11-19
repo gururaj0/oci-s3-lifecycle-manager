@@ -18,7 +18,8 @@ def install_reference(app, cfg):
             'properties': {**{k:{'type':'string'} for k in ['access_key_id','secret_access_key','region','scope_profile']},
                 'lease_id':{'type':'string','format':'uuid'}, 'status':{'type':'string','enum':['ACTIVE','SCHEDULE_PENDING']},
                 'endpoint':{'type':'string','format':'uri'}, 'expires_at':{'type':'string','format':'date-time'},
-                'expiry_mode':{'type':'string','enum':['managed_key_deletion']}}}
+                'expiry_mode':{'type':'string','enum':['managed_key_deletion']},
+                'timings':{'type':'object','description':'Optional backend stage timings in seconds, excluding OAuth token generation; prefix_resources reports validated resource reuse.'}}}
         schemas['LeaseMetadata'] = {'type':'object','required':['lease_id','status','scope_profile'], 'properties':{
             'lease_id':{'type':'string','format':'uuid'},
             'status':{'type':'string','enum':['PREPARING','SCHEDULE_PENDING','ACTIVE','REVOKE_PENDING','REVOKED']},
@@ -82,7 +83,7 @@ def install_reference(app, cfg):
         spec['paths']['/v1/leases/{lease_id}']['get']['responses']['200']=response('LeaseMetadata','Owner-bound lease metadata; no credential secret')
         delete=spec['paths']['/v1/leases/{lease_id}']['delete']
         delete['responses'].pop('200',None)
-        delete['responses']['202']={'description':'Revocation requested. Poll GET until status is REVOKED.'}
+        delete['responses']['202']={'description':'Revocation intent recorded; OCI cleanup runs asynchronously. Poll GET until status is REVOKED.'}
         delete['responses']['204']={'description':'Lease was already revoked; empty response.'}
         spec['paths']['/v1/leases']['get']['responses']['200']={'description':'Up to 100 most recent owner-bound, authorized leases','content':{'application/json':{'schema':{'type':'object','properties':{'leases':{'type':'array','items':{'$ref':'#/components/schemas/LeaseMetadata'}}}}}}}
         app.openapi_schema=spec

@@ -1,0 +1,7 @@
+{
+  "event": "function_test_result",
+  "passed": true,
+  "lease_id": "58aad9bb-c9c2-4830-baba-40a6825ca6ef",
+  "scope_prefix": "quarterly/",
+  "worker": "function"
+}

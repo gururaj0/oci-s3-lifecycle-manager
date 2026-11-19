@@ -86,11 +86,18 @@ class OracleLedger:
             finally:raw.rollback()
 
     @contextmanager
-    def tx(self):
+    def tx(self, lock_key="writer_lock"):
         with self.pool.acquire() as raw:
             try:
                 c=Connection(raw)
-                c.execute("SELECT value FROM control WHERE id='writer_lock' FOR UPDATE WAIT 30").fetchone()
+                # Bootstrap a named mutex under the global lock only once. Each
+                # remote lease saga then serializes on its own durable mutex.
+                if lock_key!='writer_lock' and not c.execute('SELECT id FROM control WHERE id=?',(lock_key,)).fetchone():
+                    c.execute("SELECT value FROM control WHERE id='writer_lock' FOR UPDATE WAIT 30").fetchone()
+                    c.execute('INSERT OR IGNORE INTO control VALUES(?,?)',(lock_key,'0'))
+                    raw.commit()
+                row=c.execute('SELECT value FROM control WHERE id=? FOR UPDATE WAIT 30',(lock_key,)).fetchone()
+                if not row:raise RuntimeError('TRANSACTION_LOCK_MISSING')
                 yield c
                 raw.commit()
             except BaseException:

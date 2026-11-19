@@ -858,7 +858,7 @@
             "description": "Missing, expired or invalid service JWT. Gateway errors may use a gateway-specific body."
           },
           "202": {
-            "description": "Revocation requested. Poll GET until status is REVOKED."
+            "description": "Revocation intent recorded; OCI cleanup runs asynchronously. Poll GET until status is REVOKED."
           },
           "204": {
             "description": "Lease was already revoked; empty response."
@@ -1574,6 +1574,10 @@
             "enum": [
               "managed_key_deletion"
             ]
+          },
+          "timings": {
+            "type": "object",
+            "description": "Optional backend stage timings in seconds, excluding OAuth token generation; prefix_resources reports validated resource reuse."
           }
         }
       },

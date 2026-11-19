@@ -1,0 +1,9 @@
+{
+  "event": "ttl_result",
+  "passed": true,
+  "lease_id": "10531990-4fd1-4a36-8aec-5dbe7db053f6",
+  "worker": "instance",
+  "cleanup_after_ttl_seconds": 17.159,
+  "key_absent": true,
+  "membership_absent": true
+}

@@ -1,12 +1,19 @@
 """Bounded live-fixture diagnostics, never an arbitrary object/data proxy."""
 import json
+import time
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from shared.errors import Problem
 
 
-def run_test(engine, owner, lease_id, body):
+def record_test(engine,lease_id,detail):
+    with engine.db.tx(lock_key='diagnostic_audit_lock') as connection:
+        engine.db.audit(connection,lease_id,'S3_TEST',detail=detail)
+
+
+def run_test(engine, owner, lease_id, body, defer_audit=None):
+    started=time.monotonic()
     lease = engine.owned(lease_id, owner)
     if body.access_key_id != lease['key_id']:
         raise Problem(403, 'NOT_OWNER')
@@ -33,6 +40,7 @@ def run_test(engine, owner, lease_id, body):
     operation = body.operation
     expected = lease['state'] != 'REVOKED' and operation in operations
     result = {'mode': 'oci', 'operation': operation, 'expected_access': 'ALLOW' if expected else 'DENY','bucket':bucket,'prefix':prefix}
+    s3_started=time.monotonic()
     try:
         if operation == 'GET':
             result['object_name']=read_key
@@ -63,12 +71,16 @@ def run_test(engine, owner, lease_id, body):
         result['http_status'] = status
         # A missing object is not proof of an authorization denial.
         code = error.response.get('Error', {}).get('Code', '')
+        result['s3_error_code']=code
         result['observed_access'] = 'DENY' if status == 403 or (status == 404 and code in ('AccessDenied', 'NotAuthorizedOrNotFound')) else 'ERROR'
     finally:
+        result['s3_request_seconds']=round(time.monotonic()-s3_started,4)
         client.close()
     result['matches_expectation'] = result['observed_access'] == result['expected_access'] and result.get('fixture_verified', True)
     result['note'] = 'This is an actual OCI S3 result. New-key propagation and delayed deletion can affect results; a lease timestamp alone does not enforce denial.'
-    with engine.db.tx() as connection:
-        engine.db.audit(connection, lease_id, 'S3_TEST', detail=json.dumps({k: result[k] for k in
-            ('operation', 'http_status', 'expected_access', 'observed_access', 'matches_expectation')}))
+    result['backend_test_seconds']=round(time.monotonic()-started,4)
+    result['lease_age_seconds']=round(time.time()-lease['key_created_at'],3) if lease['key_created_at'] else None
+    detail=json.dumps({k:result[k] for k in ('operation','http_status','expected_access','observed_access','matches_expectation','s3_request_seconds','backend_test_seconds','lease_age_seconds','s3_error_code') if k in result})
+    if defer_audit:defer_audit(record_test,engine,lease_id,detail)
+    else:record_test(engine,lease_id,detail)
     return result

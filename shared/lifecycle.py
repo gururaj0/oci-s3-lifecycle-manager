@@ -27,6 +27,8 @@ class Lifecycle:
                 for profile in cfg.profiles:
                     ids=cfg.prefix_service_users.get(profile,[]) if cfg.mode=='oci' else [f'{cfg.deployment_id}:prefix:{profile}:{n+1}' for n in range(cfg.pool_size)]
                     for user_id in ids:c.execute('INSERT OR IGNORE INTO users(id,profile) VALUES(?,?)',(user_id,'prefix:'+profile))
+            for key in ('rate_lock','diagnostic_audit_lock'):
+                c.execute('INSERT OR IGNORE INTO control VALUES(?,?)',(key,'0'))
             c.execute("INSERT OR IGNORE INTO control VALUES('paused','0')")
             c.execute("INSERT OR IGNORE INTO control VALUES('cleanup_error','0')")
             if cfg.mode=='mock':
@@ -51,7 +53,7 @@ class Lifecycle:
     def rate(self, owner):
         key = hashlib.sha256(json.dumps({k:owner[k] for k in ('issuer','subject')}, sort_keys=True).encode()).hexdigest()
         minute = int(time.time() // 60)
-        with self.db.tx() as c:
+        with self.db.tx(lock_key="rate_lock") as c:
             c.execute('DELETE FROM rate_buckets WHERE minute<?', (minute-1,))
             c.execute('INSERT INTO rate_buckets VALUES(?,?,1) ON CONFLICT(id) DO UPDATE SET minute=excluded.minute,count=CASE WHEN rate_buckets.minute=excluded.minute THEN rate_buckets.count+1 ELSE 1 END', (key,minute))
             count = c.execute('SELECT count FROM rate_buckets WHERE id=?', (key,)).fetchone()[0]
@@ -89,6 +91,7 @@ class Lifecycle:
         return 200, payload
 
     def create(self, owner, body, idem, correlation, endpoint, defer_setup=False):
+        started=time.monotonic();timings={}
         profile, ttl = body['scope_profile'], body['ttl_seconds']
         if profile not in self.cfg.profiles:
             raise Problem(422, 'UNSUPPORTED_SCOPE')
@@ -114,6 +117,7 @@ class Lifecycle:
                 raise Problem(429, 'POOL_EXHAUSTED')
             user_id = user['id']
             c.execute('UPDATE users SET active_lease=?,lock_version=lock_version+1 WHERE id=?', (lease_id,user_id))
+            c.execute('INSERT OR IGNORE INTO control VALUES(?,?)',('lease:'+lease_id,'0'))
             display = self.cfg.deployment_id + '/' + lease_id
             c.execute('''INSERT INTO leases(id,deployment,issuer,subject,profile,profile_version,user_id,
  display_name,state,requested_ttl,created_at,request_hash,idem,client_request_id,correlation_id)
@@ -124,16 +128,25 @@ class Lifecycle:
             if body.get('prefix'):
                 c.execute('INSERT INTO prefix_grants(lease_id,bucket,prefix,operations) VALUES(?,?,?,?)',(lease_id,body['bucket'],body['prefix'],json.dumps(body['operations'])))
             self.db.audit(c,lease_id,'RESERVED',correlation)
+        timings['reservation_seconds']=round(time.monotonic()-started,4)
         try:
+            stage=time.monotonic()
             if self.cfg.mode=='oci':self.cloud.validate_user(user_id)
             if self.cloud.list_keys(user_id):
                 with self.db.tx() as c:
                     c.execute('UPDATE users SET quarantined=1 WHERE id=?', (user_id,))
                 raise RuntimeError('UNEXPECTED_KEYS')
+            timings['identity_checks_seconds']=round(time.monotonic()-stage,4)
             if body.get('prefix'):
-                self.cloud.ensure_prefix_membership(lease_id,user_id)
+                stage=time.monotonic()
+                details=self.cloud.ensure_prefix_membership(lease_id,user_id)
+                timings['prefix_provisioning_seconds']=round(time.monotonic()-stage,4)
+                if details:timings['prefix_resources']=details
                 with self.db.tx() as c:self.db.audit(c,lease_id,'PREFIX_MEMBERSHIP_GRANTED',correlation)
+            stage=time.monotonic()
             key = self.cloud.create_key(user_id, display)
+            timings['key_creation_seconds']=round(time.monotonic()-stage,4)
+            stage=time.monotonic()
             expires = key['created'] + ttl
             with self.db.tx() as c:
                 r = dict(c.execute('SELECT * FROM leases WHERE id=?', (lease_id,)).fetchone())
@@ -147,7 +160,9 @@ class Lifecycle:
                     if expires<=time.time():raise RuntimeError('EXPIRED_DURING_SETUP')
                     c.execute('UPDATE leases SET delivered_at=? WHERE id=?',(time.time(),lease_id))
                     self.db.audit(c,lease_id,'DELIVERED_SETUP_PENDING',correlation)
-            payload = {'lease_id':lease_id,'status':'SCHEDULE_PENDING','access_key_id':key['id'],
+            timings['credential_recording_seconds']=round(time.monotonic()-stage,4)
+            timings['backend_issuance_seconds']=round(time.monotonic()-started,4)
+            payload = {'timings':timings,'lease_id':lease_id,'status':'SCHEDULE_PENDING','access_key_id':key['id'],
                        'secret_access_key':key['secret'],'endpoint':endpoint,'region':self.cfg.region,
                        'scope_profile':profile,'expires_at':utc(expires),'expiry_mode':'managed_key_deletion'}
             if body.get('prefix'):payload.update(bucket=body['bucket'],prefix=body['prefix'],operations=body['operations'],listing_scope='bucket' if 'LIST' in body['operations'] else 'none')
@@ -200,8 +215,7 @@ class Lifecycle:
         finally:payload.clear()
 
     def setup(self, lease_id, generation):
-        self.cloud.fault('schedule')
-        with self.db.tx() as c:
+        with self.db.tx(lock_key="lease:"+lease_id) as c:
             row = c.execute('SELECT * FROM leases WHERE id=?',(lease_id,)).fetchone()
             if not row or row['deployment']!=self.cfg.deployment_id or row['generation']!=generation or row['state'] in ('REVOKED','REVOKE_PENDING'):
                 return False
@@ -209,6 +223,9 @@ class Lifecycle:
                 raise RuntimeError('RETRY_KEY_NOT_PERSISTED')
             if row['expires_at'] <= time.time():
                 raise RuntimeError('LEASE_ALREADY_DUE')
+            if row['schedule_id'] and c.execute("SELECT 1 FROM schedules WHERE id=? AND lease_id=? AND generation=? AND state='ACTIVE'",(row['schedule_id'],lease_id,generation)).fetchone():
+                return True
+            self.cloud.fault('schedule')
             schedule = self.cloud.ensure_schedule(lease_id,generation,row['expires_at']) if self.cfg.mode=='oci' else f'{lease_id}:{generation}'
             c.execute("INSERT OR IGNORE INTO schedules VALUES(?,?,?,?,'ACTIVE')",(schedule,lease_id,generation,math.ceil(row['expires_at'])))
             c.execute('UPDATE leases SET schedule_id=? WHERE id=?',(schedule,lease_id))
@@ -239,7 +256,7 @@ class Lifecycle:
         return 'CONFIRMED'
 
     def delete(self, lease_id, generation):
-        with self.db.tx() as c:
+        with self.db.tx(lock_key="lease:"+lease_id) as c:
             r = c.execute('SELECT * FROM leases WHERE id=?',(lease_id,)).fetchone()
             if not r or r['deployment']!=self.cfg.deployment_id or r['generation']!=generation:
                 return False
@@ -286,14 +303,14 @@ class Lifecycle:
                 self.db.audit(c,lease_id,'DELETE_RETRY',detail=type(exc).__name__)
                 return False
 
-    def revoke(self, lease_id, owner):
+    def revoke(self, lease_id, owner, defer_delete=False):
         r = self.owned(lease_id,owner)
         if r['state']=='REVOKED':
             return 204
         with self.db.tx() as c:
             c.execute("UPDATE leases SET revoke_intent=1,state='REVOKE_PENDING' WHERE id=? AND state!='REVOKED'",(lease_id,))
             self.db.audit(c,lease_id,'EARLY_REVOKE_REQUESTED')
-        self.delete(lease_id,r['generation'])
+        if not defer_delete:self.delete(lease_id,r['generation'])
         return 202
 
     def reconcile(self):
